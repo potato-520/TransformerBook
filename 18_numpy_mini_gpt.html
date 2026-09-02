@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -332,16 +346,32 @@
     
     <h1>4.2 极简纯 NumPy GPT 推理引擎 (Mini GPT Engine in NumPy)</h1>
     <div class="card">
-      <strong>本节目标：</strong>脱离任何 PyTorch / TensorFlow 依赖，使用不超过 200 行纯 Python + NumPy，从零手写一个可独立运行的完整 GPT Decoder 推理引擎，并在浏览器端单步断点执行验证！
+      <strong>本节核心认知目标：</strong><br/>
+      脱离任何 PyTorch / TensorFlow 依赖，使用不超过 200 行纯 Python + NumPy，从零手写一个可独立运行的完整 GPT Decoder 推理引擎，并在浏览器端单步断点执行验证！
     </div>
 
-    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
-    <p>
-      很多人在学习大模型时，代码里到处充斥着 <code>torch.nn.Module</code>、<code>AutoModelForCausalLM</code> 等高阶封装，这让人误以为大模型推理底层极其神秘复杂。<br/>
-      <strong>通过本节的纯 NumPy 极简实现，你将亲眼见证：一个能够进行真实自回归文本生成的大模型核心推理逻辑，本质上只需要几行初等矩阵乘法和加法循环！</strong>
-    </p>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：框架层层封装带来的“神话崇拜”</h3>
+      <p>
+        随着 HuggingFace、PyTorch、DeepSpeed 等重型框架的普及，大模型推理被封装为 <code>model.generate()</code> 这类一行命令。<br/>
+        这虽然极大方便了应用调用，但也让无数工程师对底层运行逻辑产生了某种不可知的“魔法崇拜”。
+      </p>
 
-    <h2>2. 纯 NumPy 极简 GPT 完整实现 (核心代码)</h2>
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：脱离 GPU 集群即瘫痪的认知死角</h3>
+      <p>
+        很多初学者误以为大模型推理底层需要极其深奥不可测的操作系统特权，一旦离开庞大的 Python 运行时和几千个依赖包，就不知道一段文本是如何从矩阵一步步算出来的。
+      </p>
+
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：安德烈·卡帕西（Karpathy）的极简底层还原</h3>
+      <p>
+        前 Tesla AI 总监、OpenAI 联合创始人<strong>安德烈·卡帕西（Andrej Karpathy）</strong>先后开源了 <code>nanoGPT</code> 与 <code>llama2.c</code>：<br/>
+        <em>“大模型的推理本质，无非就是几百行纯 C 或 NumPy 初等矩阵乘累加的循环迭代！”</em><br/>
+        在本节中，我们将亲手运行这个 100 多行的纯 NumPy GPT 引擎，见证一个无依赖、完全透明的真正大模型是如何运转的！
+      </p>
+    </div>
+
+    <h2>2. 纯 NumPy 极简 GPT 完整实现</h2>
     <pre><code class="language-python">import numpy as np
 
 class MiniGPT:
@@ -350,14 +380,13 @@ class MiniGPT:
         self.d_model = d_model
         self.n_heads = n_heads
         self.n_layers = n_layers
-        self.d_k = d_model // n_heads
 
         self.wte = np.random.randn(vocab_size, d_model) * 0.02
         self.wpe = np.random.randn(128, d_model) * 0.02
 
         self.blocks = []
         for _ in range(n_layers):
-            block = {
+            self.blocks.append({
                 'ln1_g': np.ones(d_model),
                 'wq': np.random.randn(d_model, d_model) * 0.02,
                 'wk': np.random.randn(d_model, d_model) * 0.02,
@@ -366,9 +395,7 @@ class MiniGPT:
                 'ln2_g': np.ones(d_model),
                 'w_gate': np.random.randn(d_model, d_model * 4) * 0.02,
                 'w_down': np.random.randn(d_model * 4, d_model) * 0.02,
-            }
-            self.blocks.append(block)
-
+            })
         self.ln_f_g = np.ones(d_model)
         self.lm_head = np.random.randn(d_model, vocab_size) * 0.02
 
@@ -378,50 +405,38 @@ class MiniGPT:
 
     def forward(self, token_ids):
         L = len(token_ids)
-        positions = np.arange(0, L)
-        
-        x = self.wte[token_ids] + self.wpe[positions]
+        x = self.wte[token_ids] + self.wpe[np.arange(0, L)]
         
         for b in self.blocks:
             norm_x = self._rmsnorm(x, b['ln1_g'])
             q = np.dot(norm_x, b['wq'])
             k = np.dot(norm_x, b['wk'])
             v = np.dot(norm_x, b['wv'])
-            
             scores = np.matmul(q, k.T) / np.sqrt(self.d_model)
             mask = np.triu(np.ones_like(scores, dtype=bool), k=1)
             scores = np.where(mask, -1e9, scores)
             attn = np.exp(scores - np.max(scores, axis=-1, keepdims=True))
             attn = attn / np.sum(attn, axis=-1, keepdims=True)
-            
-            attn_out = np.dot(np.matmul(attn, v), b['wo'])
-            x = x + attn_out
+            x = x + np.dot(np.matmul(attn, v), b['wo'])
             
             norm_x2 = self._rmsnorm(x, b['ln2_g'])
             h = np.maximum(0, np.dot(norm_x2, b['w_gate']))
-            ffn_out = np.dot(h, b['w_down'])
-            x = x + ffn_out
+            x = x + np.dot(h, b['w_down'])
             
         x_norm = self._rmsnorm(x, self.ln_f_g)
-        logits = np.dot(x_norm[-1], self.lm_head)
-        return logits
+        return np.dot(x_norm[-1], self.lm_head)
 
 gpt = MiniGPT()
 input_tokens = [1, 15, 28]
-print(f"初始 Prompt: {input_tokens}")
-
-for step in range(5):
+print("初始 Prompt:", input_tokens)
+for step in range(3):
     logits = gpt.forward(input_tokens)
     next_token = int(np.argmax(logits))
     input_tokens.append(next_token)
-    print(f"Step {step+1}: 预测下一个 Token = {next_token} -> 当前序列: {input_tokens}")
+    print(f"Step {step+1}: 预测下一个 Token = {next_token} -> 当前序列:", input_tokens)
 </code></pre>
 
     <h2>3. 黑盒 JS 可交互动画：浏览器端单步 GPT 自回归生成演示</h2>
-    <p>
-      点击“自回归生成下一步”，观察 Mini GPT 引擎是如何在单步前向传播后输出 Logits 并拼装进序列的！
-    </p>
-
     <div class="interactive-card">
       <div class="interactive-title">🎮 Mini GPT 自回归单步生成控制台</div>
       
@@ -430,78 +445,44 @@ for step in range(5):
         <button class="btn" onclick="resetMiniGPT()" style="background: #64748b;">重置 Prompt</button>
       </div>
 
-      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 300px;">
-          <div style="font-weight: 600; margin-bottom: 8px; color: #0f172a;">当前生成文本 Token 序列：</div>
-          <div id="gpt_stream" style="padding: 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; font-family: Consolas; font-size: 15px; min-height: 48px; display: flex; flex-wrap: wrap; gap: 6px;"></div>
-        </div>
-
-        <div style="flex: 1; min-width: 260px;">
-          <div class="logic-box" style="margin-top: 0;">
-            <strong>当前推理指标：</strong><br/>
-            上下文长度 $L$: <span id="gpt_len" style="font-family: Consolas; font-weight: bold; color: #2563eb;">3</span><br/>
-            最新预测 ID: <span id="latest_token" style="font-family: Consolas; font-weight: bold; color: #166534;">-</span><br/>
-            状态: <span id="gpt_state" style="color: #475569;">等待点击生成...</span>
-          </div>
-        </div>
-      </div>
+      <div style="font-weight: 600; margin-bottom: 8px; color: #0f172a;">当前生成文本 Token 序列：</div>
+      <div id="gpt_stream" style="padding: 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; font-family: Consolas; font-size: 15px; display: flex; flex-wrap: wrap; gap: 6px;"></div>
     </div>
 
     <script>
       let currentTokens = ["Deep", "Learning", "is"];
-      const vocabCandidates = ["fast", "powerful", "scalable", "exciting", "future", "everywhere", "essential"];
+      const vocabCandidates = ["fast", "powerful", "scalable", "exciting", "future", "essential"];
 
       function renderStream() {
         const c = document.getElementById('gpt_stream');
         c.innerHTML = '';
         currentTokens.forEach((tok, idx) => {
           const badge = document.createElement('span');
-          badge.style.padding = '3px 8px';
-          badge.style.borderRadius = '5px';
+          badge.style.padding = '3px 8px'; badge.style.borderRadius = '5px';
           badge.style.background = idx < 3 ? '#eff6ff' : '#dcfce7';
           badge.style.color = idx < 3 ? '#1e40af' : '#166534';
-          badge.style.border = '1px solid #cbd5e1';
-          badge.style.fontWeight = 'bold';
+          badge.style.border = '1px solid #cbd5e1'; badge.style.fontWeight = 'bold';
           badge.innerText = tok;
           c.appendChild(badge);
         });
-        document.getElementById('gpt_len').innerText = currentTokens.length;
       }
-
       function stepMiniGPT() {
-        if (currentTokens.length >= 10) {
-          document.getElementById('gpt_state').innerText = "已达演示最大长度 (10 Tokens)";
-          return;
-        }
+        if (currentTokens.length >= 8) return;
         const nextWord = vocabCandidates[Math.floor(Math.random() * vocabCandidates.length)];
         currentTokens.push(nextWord);
-        document.getElementById('latest_token').innerText = `${nextWord} (ID: ${Math.floor(Math.random()*1000)+100})`;
-        document.getElementById('gpt_state').innerText = `已完成 1 步前向自回归并送入序列`;
         renderStream();
       }
-
       function resetMiniGPT() {
         currentTokens = ["Deep", "Learning", "is"];
-        document.getElementById('latest_token').innerText = "-";
-        document.getElementById('gpt_state').innerText = "已重置为初始 Prompt";
         renderStream();
       }
-
       resetMiniGPT();
     </script>
 
-    <h2>4. 打开黑盒：真实工程细节 (C/C++ 引擎的实现范式)</h2>
-    <div class="card">
-      <strong>纯 C/C++ 推理引擎（如 llama.cpp / GGML）：</strong><br/>
-      上述 100 行 NumPy 代码与 <code>llama.cpp</code> 中的核心计算逻辑完全 1:1 对等！<br/>
-      唯一的区别在于：<code>llama.cpp</code> 将其中的 <code>np.dot</code> 替换为了手写的高性能 <strong>AVX2 / ARM NEON 定点汇编指令</strong>，并在显存中维护了一个全局的动态指针环形缓冲区（KV Cache）。
-    </div>
-
-    <h2>5. 动手实验与思考题</h2>
+    <h2>4. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：</strong><br/>
-      在上述 MiniGPT 的 <code>for step in range(5)</code> 自回归生成循环中，每生成 1 个新 Token，我们都将整条序列（长度从 3 变 4，从 4 变 5...）重新完整传给了 <code>gpt.forward()</code>。<br/>
-      请问前 3 个 Token 的 Q/K/V 投影在每一步都被<strong>重复计算</strong>了多少次？我们该如何消灭这种巨大的算力浪费？<br/>
+      在上述 MiniGPT 自回归生成循环中，每生成 1 个新 Token，前文 Token 的 Q/K/V 是否在每一步都被<strong>重复计算</strong>了？我们该如何消灭这种算力浪费？<br/>
       <em>提示：下一节的 KV Cache 机制将彻底终结这一痛点！</em>
     </div>
 

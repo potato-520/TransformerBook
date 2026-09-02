@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -324,180 +338,163 @@
         <a href="index.html">← 返回目录</a>
       </div>
       <div>
-        <a href="07_embedding_lookup.html">← 1.2 Embedding 嵌入层</a> | 
+        <a href="07_embedding_lookup.html">← 1.2 Embedding嵌入层</a> | 
         <a href="09_qkv_intuition.html">2.1 Q/K/V 检索物理直觉 →</a>
       </div>
     </div>
 
     
-    <h1>1.3 传统序列模型瓶颈 (RNN/LSTM vs. Attention)</h1>
+    <h1>1.3 传统序列模型瓶颈 (RNN / LSTM Bottleneck)</h1>
     <div class="card">
-      <strong>本节目标：</strong>从计算架构与硬件并行视角，对比 RNN、LSTM、CNN 与 Transformer 自注意力机制的根本差异，深刻理解为什么“循环时序依赖”被现代大模型彻底淘汰。
+      <strong>本节核心认知目标：</strong><br/>
+      理解在 2017 年 Transformer 诞生前，统治 NLP 的循环神经网络（RNN/LSTM）的核心工作机制，透视其“串行时钟依赖”与“固定维度记忆瓶颈”两大致命软肋，理解为什么 Transformer 的全并行架构是历史的必然。
     </div>
 
-    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
-    <p>
-      自然语言是一串有先后顺序的时序序列。在 Transformer 诞生前（2017 年之前），学术界主要使用<strong>循环神经网络（RNN / LSTM / GRU）</strong>来处理文本。<br/>
-      然而，RNN 存在两个无法逾越的<strong>致命工程死穴</strong>：
-    </p>
-    <ol>
-      <li><span class="mark-danger">串行时钟依赖（无法硬件并行）</span>：计算第 $t$ 个词必须等待第 $t-1$ 个词的隐藏状态 $h_{t-1}$ 完成，哪怕你有 1 万张 GPU，也只能串行等待！</li>
-      <li><span class="mark-caution">长程记忆衰减（马尔可夫瓶颈）</span>：当句子达到几百个词时，最早的信息在数十次连乘中早已稀释殆尽（梯度消失或信息覆盖）。</li>
-    </ol>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：2014~2016 年 LSTM 统治序列霸权</h3>
+      <p>
+        在长达数年的时间里，以 <strong>RNN（循环神经网络）</strong> 和 <strong>LSTM（长短期记忆网络）</strong> 为代表的序列模型，是自然语言翻译、语音识别的绝对霸主。<br/>
+        它的设计哲学非常直观：人类看书是一个字一个字从左到右阅读的，所以模型维护一个隐藏状态向量 $h_t$（类似于人的短期记忆），读入一个新词就更新一次记忆：
+        $$h_t = \tanh(W x_t + U h_{t-1})$$
+      </p>
 
-    <h2>2. RNN vs Transformer 硬件计算拓扑对比</h2>
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：GPU 算力饥渴与长程记忆遗忘黑洞</h3>
+      <p>
+        然而，随着大模型对海量语料吞吐需求的爆发，RNN 撞上了两堵无法逾越的物理高墙：<br/>
+        1. <strong>串行时钟依赖（Sequential Dependency）</strong>：计算第 1000 个词必须先等前 999 个词算完！<strong>现代 GPU 拥有上万个并行流处理器，但在 RNN 面前只能单核串行等待，硬件利用率（MFU）低至可怜的 5% 以下！</strong><br/>
+        2. <strong>固定维度信息瓶颈</strong>：无论是一篇 5000 字的长文还是一本小说，全部被强行压缩进一个固定大小的 512 维隐状态向量 $h_t$ 中，信息在漫长的时间步中被不断稀释冲刷，前面的信息彻底遗忘。
+      </p>
+
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：2017 年“扔掉时钟”的范式大革命</h3>
+      <p>
+        2017 年，Google 团队的 8 位学者写下了名垂青史的论文 <strong>《Attention Is All You Need》</strong>！<br/>
+        他们做出了深度学习史上最激进的决定：<strong>“彻底扔掉所有的 RNN 循环连接！直接让序列中所有词在同一瞬间并行输入，通过矩阵广播同时计算任意两词之间的直接关联！”</strong><br/>
+        这一革命将计算时间复杂度从 $O(L)$ 串行等待降维为 $O(1)$ 并行矩阵乘，彻底引爆了 GPU 的全部并行算力，开启了 Transformer 与现代大模型的新纪元！
+      </p>
+    </div>
+
+    <h2>2. RNN vs Transformer 拓扑与复杂度对比</h2>
     <table>
       <thead>
         <tr>
           <th>对比维度</th>
-          <th>RNN / LSTM</th>
-          <th>Transformer (Self-Attention)</th>
+          <th>传统 RNN / LSTM</th>
+          <th>现代 Transformer (Self-Attention)</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td><strong>时序依赖方式</strong></td>
-          <td>串行步进：$h_t = f(h_{t-1}, x_t)$</td>
-          <td><strong>全序列广播并行点积</strong></td>
+          <td><strong>计算时序机制</strong></td>
+          <td>严格串行，必须 $t-1 \to t$ 逐步推演</td>
+          <td><strong>全序列一次性并行广播输入 (Matrix GEMM)</strong></td>
         </tr>
         <tr>
-          <td><strong>长程连接路径长度</strong></td>
-          <td>$O(L)$（距离多远就需要传播多少步）</td>
-          <td><strong>$O(1)$（任意两个 Token 一步直达）</strong></td>
+          <td><strong>GPU 硬件利用率</strong></td>
+          <td>极低（~5% MFU，频繁等待前步输出）</td>
+          <td><strong>极高（~50%~70% MFU，满载矩阵乘）</strong></td>
         </tr>
         <tr>
-          <td><strong>GPU 算力利用率</strong></td>
-          <td>极低（单步 GEMV，受限于内存时延）</td>
-          <td><strong>极高（大型 GEMM，跑满 Tensor Core）</strong></td>
-        </tr>
-        <tr>
-          <td><strong>计算复杂度</strong></td>
-          <td>$O(L \cdot D^2)$</td>
-          <td>$O(L^2 \cdot D)$（长文本下的显存痛点）</td>
+          <td><strong>长程关联路径长度</strong></td>
+          <td>$O(L)$（随距离增加指数衰减）</td>
+          <td><strong>$O(1)$（任意两个词之间直通一步到达）</strong></td>
         </tr>
       </tbody>
     </table>
 
-    <h2>3. 黑盒 JS 可交互动画：串行流水线 vs 并行广播处理时序对比</h2>
+    <h2>3. 黑盒 JS 可交互动画：RNN 串行排队 vs Transformer 并行直连对比</h2>
     <p>
-      点击下方按钮，直观感受 RNN 逐时钟周期的“串行爬行”与 Transformer 的“全局瞬时全连接”！
+      点击下方按钮，直观对比一个包含 5 个 Token 的句子在 RNN 逐步等待机制与 Transformer 并行矩阵通信下的巨大吞吐差异！
     </p>
 
     <div class="interactive-card">
-      <div class="interactive-title">🎮 时序计算拓扑模拟器</div>
+      <div class="interactive-title">🎮 RNN 串行等待 vs Transformer 并行矩阵模拟器</div>
       
       <div class="control-panel">
-        <button class="btn" onclick="startRNNAnim()">演示 RNN 串行传递</button>
-        <button class="btn" onclick="startAttnAnim()" style="background: #16a34a;">演示 Transformer 并行广播</button>
+        <button class="btn" onclick="playRNN()" style="background: #dc2626;">播放 RNN 串行流转 (一步步等待)</button>
+        <button class="btn" onclick="playTransformer()" style="background: #16a34a;">播放 Transformer 并行全连接 (瞬间广播)</button>
       </div>
 
-      <canvas id="seqCanvas" width="700" height="260" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #fafafa; display: block; margin: 0 auto;"></canvas>
+      <canvas id="seqCanvas" width="600" height="240" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; display: block; margin: 0 auto;"></canvas>
     </div>
 
     <script>
-      const sCanvas = document.getElementById('seqCanvas');
-      const sCtx = sCanvas.getContext('2d');
-      const tokens = ["The", "animal", "didn't", "cross", "street", "because", "it", "was", "tired"];
+      const sC = document.getElementById('seqCanvas');
+      const sCtx = sC.getContext('2d');
+      const tokens5 = ["The", "cat", "sat", "on", "mat"];
+      const startX = 60, spacing = 110, nodeY = 120;
 
       function drawBaseNodes() {
-        sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
-        const startX = 50;
-        const spacing = 70;
-        const yPos = 180;
-
-        tokens.forEach((t, i) => {
+        sCtx.clearRect(0, 0, sC.width, sC.height);
+        tokens5.forEach((tok, i) => {
           const x = startX + i * spacing;
-          sCtx.fillStyle = '#ffffff';
-          sCtx.strokeStyle = '#94a3b8';
+          sCtx.fillStyle = '#eff6ff';
+          sCtx.strokeStyle = '#2563eb';
           sCtx.lineWidth = 2;
           sCtx.beginPath();
-          sCtx.roundRect(x - 28, yPos - 16, 56, 32, 6);
-          sCtx.fill();
-          sCtx.stroke();
+          sCtx.roundRect(x - 30, nodeY - 20, 60, 40, 6);
+          sCtx.fill(); sCtx.stroke();
 
           sCtx.fillStyle = '#0f172a';
-          sCtx.font = '12px Segoe UI, sans-serif';
+          sCtx.font = 'bold 12px Segoe UI';
           sCtx.textAlign = 'center';
-          sCtx.fillText(t, x, yPos + 4);
+          sCtx.fillText(tok, x, nodeY + 5);
         });
       }
 
-      function startRNNAnim() {
+      function playRNN() {
         drawBaseNodes();
-        const startX = 50, spacing = 70, yPos = 180;
         let step = 0;
-
         const timer = setInterval(() => {
-          if (step >= tokens.length - 1) {
-            clearInterval(timer);
-            return;
-          }
-          const x1 = startX + step * spacing + 28;
-          const x2 = startX + (step + 1) * spacing - 28;
+          if (step >= 4) { clearInterval(timer); return; }
+          const x1 = startX + step * spacing + 30;
+          const x2 = startX + (step + 1) * spacing - 30;
 
           sCtx.strokeStyle = '#dc2626';
           sCtx.lineWidth = 3;
           sCtx.beginPath();
-          sCtx.moveTo(x1, yPos);
-          sCtx.lineTo(x2, yPos);
+          sCtx.moveTo(x1, nodeY); sCtx.lineTo(x2, nodeY);
           sCtx.stroke();
-
-          // 箭头
-          sCtx.fillStyle = '#dc2626';
-          sCtx.beginPath();
-          sCtx.arc(x2, yPos, 4, 0, Math.PI * 2);
-          sCtx.fill();
-
           step++;
-        }, 180);
+        }, 300);
       }
 
-      function startAttnAnim() {
+      function playTransformer() {
         drawBaseNodes();
-        const startX = 50, spacing = 70, yPos = 180;
-        const targetIdx = 6; // "it"
-        const itX = startX + targetIdx * spacing;
-
-        sCtx.strokeStyle = '#2563eb';
-        sCtx.lineWidth = 2;
-
-        tokens.forEach((t, i) => {
-          if (i === targetIdx) return;
-          const curX = startX + i * spacing;
-
-          sCtx.beginPath();
-          sCtx.moveTo(itX, yPos - 20);
-          sCtx.quadraticCurveTo((itX + curX) / 2, 40, curX, yPos - 20);
-          sCtx.stroke();
-        });
+        sCtx.strokeStyle = '#16a34a';
+        sCtx.lineWidth = 1.5;
+        for (let i = 0; i < 5; i++) {
+          for (let j = i + 1; j < 5; j++) {
+            const x1 = startX + i * spacing;
+            const x2 = startX + j * spacing;
+            sCtx.beginPath();
+            sCtx.moveTo(x1, nodeY - 20);
+            sCtx.quadraticCurveTo((x1 + x2)/2, nodeY - 60 - (j - i)*8, x2, nodeY - 20);
+            sCtx.stroke();
+          }
+        }
       }
 
       drawBaseNodes();
     </script>
 
-    <h2>4. 为什么 Transformer 能够横扫一切？</h2>
-    <div class="logic-box">
-      <strong>《Attention Is All You Need》的划时代贡献：</strong><br/>
-      Transformer 彻底砸碎了“时序必须循环处理”的陈旧观念，将序列中的每一个 Token 视为一个平等的节点。<strong>通过自注意力矩阵，任意两个相距 10 万个词的 Token 可以在 1 个时钟周期内直接完成交互与特征交换！</strong>
-    </div>
-
-    <h2>5. 打开黑盒：真实工程细节 (硬件吞吐量对比)</h2>
+    <h2>4. 打开黑盒：真实工程细节 (为什么硬件架构倒逼算法演进？)</h2>
     <div class="card">
-      <strong>GPU 硬件架构的胜利：</strong><br/>
-      GPU 的微架构本质是为<strong>大规模密集矩阵乘法（GEMM）</strong>设计的。RNN 的循环依赖迫使 GPU 核心不断空转等待内存加载；而 Transformer 将整个序列的所有 Token 打包为一个巨大的矩阵 $[L, D] 	imes [D, L]$，使得 GPU 的利用率（MFU, Model FLOPs Utilization）直接从 RNN 时代的 5% 飙升至 50% 以上！
+      <strong>硬件驱动的范式转移（Hardware Lottery）：</strong><br/>
+      RNN 并不是在算法数学上被证明是错的，而是在<strong>现代 GPU 硬件架构面前败下阵来</strong>！<br/>
+      GPU 的天命就是做大规模张量并行矩阵乘（GEMM）。谁能把算法改造成纯矩阵乘的形式，谁就能吃到摩尔定律与 GPU 算力万倍爆发的红利！这正是自注意力机制（Self-Attention）横扫世界的最深层物理底层原因！
     </div>
 
-    <h2>6. 动手实验与思考题</h2>
+    <h2>5. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：</strong><br/>
-      虽然 Transformer 解决了长程记忆与并行训练问题，但自注意力机制中所有 Token 两两交互计算点积，其时间复杂度为 $O(L^2)$。<br/>
-      请问当上下文长度从 4k 暴涨到 128k 时，计算量与注意力矩阵内存会暴增多少倍？现代大模型是如何应对这一挑战的？<br/>
-      <em>提示：我们在 Phase 4 将深入剖析的 FlashAttention 正是解决这一痛点的巅峰之作。</em>
+      如果我们将 RNN 和 Transformer 同时运行在单核单线程的极其古老的 CPU 上，两者的计算耗时还会有如此巨大的差距吗？<br/>
+      <em>提示：在单核 CPU 上两者差距会缩小，甚至 RNN 会因为计算量 $O(L)$ 小于 Transformer 的 $O(L^2)$ 而在短文本上更快！正是 GPU 的数万核并行能力，决定了 Transformer 的绝对统治地位！</em>
     </div>
 
 
     <div class="footer-nav">
-      <a href="07_embedding_lookup.html">← 上一节：1.2 Embedding 嵌入层</a>
+      <a href="07_embedding_lookup.html">← 上一节：1.2 Embedding嵌入层</a>
       <a href="index.html">📑 目录主页</a>
       <a href="09_qkv_intuition.html">下一节：2.1 Q/K/V 检索物理直觉 →</a>
     </div>

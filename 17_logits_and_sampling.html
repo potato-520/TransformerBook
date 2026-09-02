@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -332,36 +346,33 @@
     
     <h1>4.1 Logits 映射与采样策略 (Logits, Softmax & Sampling)</h1>
     <div class="card">
-      <strong>本节目标：</strong>理解大模型是如何将最后一层 Block 输出的抽象隐藏状态（Hidden State）映射回包含数万个词的词表分布，掌握 Temperature、Top-k、Top-p（核采样）的数学机理与工程实现。
+      <strong>本节核心认知目标：</strong><br/>
+      理解大模型是如何将最后一层 Block 输出的抽象隐藏状态（Hidden State）映射回包含数万个词的词表分布，掌握 Temperature、Top-k、Top-p（核采样）的数学机理与工程实现。
     </div>
 
-    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
-    <p>
-      经过数十层 Transformer Block 提炼后，最后一个 Token 的输出向量 $h_{last} \in \mathbb{R}^{D_{model}}$ 凝聚了前文所有的上下文语义。<br/>
-      但它依然只是一个 4096 维的浮点向量。<strong>我们如何从中“挑选出具体的下一个单词”？</strong><br/>
-      这需要两步：
-      1. <strong>LM Head（语言模型头）投影</strong>：将 4096 维向量投影为长度为词表大小（如 32000）的未归一化打分向量（<strong>Logits</strong>）；
-      2. <strong>采样策略（Sampler）</strong>：通过 Temperature 与截断算法从概率分布中抽取下一个 Token ID。
-    </p>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：贪婪解码（Greedy Search）的确定性时代</h3>
+      <p>
+        在语言生成初期，人们最直接的做法是<strong>贪婪搜索（Greedy Search）</strong>：每一步计算完词表得分后，直接挑 Logit 最大的那个词（$\text{argmax}$）作为输出。
+      </p>
 
-    <h2>2. 采样核心算法三剑客</h2>
-    <div class="logic-box">
-      <strong>采样控制数学原理：</strong>
-      <ul>
-        <li><strong>Temperature $T$（温度系数）</strong>：
-          $$P_i = \frac{e^{z_i / T}}{\sum_j e^{z_j / T}}$$
-          $T \to 0$ 时退化为贪婪选择（Argmax，确定性最高、最严谨）；$T > 1$ 时拉平概率分布（多样性与创造力激增）。
-        </li>
-        <li><strong>Top-k 采样</strong>：仅保留概率最高的 $K$ 个词（如 $K=50$），其余词概率归零并重新归一化。</li>
-        <li><strong>Top-p 采样 (Nucleus 采样)</strong>：按概率从大到小累加，保留累积概率刚刚达到阈值 $p$（如 $p=0.9$）的最小集合，能根据上下文动态调整候选词池大小。</li>
-      </ul>
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：“车轱辘话死循环”与创造力的彻底窒息</h3>
+      <p>
+        然而，贪婪搜索很快产生了严重的生成退化：<br/>
+        模型生成的语言极其生硬单一，并且一旦某句话中出现了重复词，自注意力权重就会锁死在该词上，导致模型陷入可怕的“车轱辘话无限死循环”！而如果完全随机采样，又会经常抽到低概率的乱码生僻词。
+      </p>
+
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：2019 年霍尔茨曼（Holtzman）与 Top-p 核采样</h3>
+      <p>
+        2019 年，华盛顿大学的 <strong>Ari Holtzman</strong> 等人提出了划时代的 <strong>Top-p (Nucleus，核采样)</strong> 算法，并结合统计物理中的 <strong>Temperature（温度系数）</strong>：<br/>
+        - <strong>动态截断</strong>：不要固定挑前 K 个词，而是按概率从大到小累加，只保留累积概率达到 $p$（如 0.9）的头部“核心词汇池”；<br/>
+        - <strong>随境而变</strong>：当模型非常确信时（如“人工智能”后面接“技术”），候选池可能只有 1~2 个词；当模型处于开放语境时，候选池自动扩大到几十个词！<br/>
+        配合 Temperature 控制平滑度，大模型终于第一次展现出既逻辑严谨又妙趣横生的人类般自然表达！
+      </p>
     </div>
 
-    <h2>3. 黑盒 JS 可交互动画：采样温度与概率分布调节仪</h2>
-    <p>
-      调节 Temperature $T$ 与 Top-p 滑块，观察 5 个候选词的概率分布直方图是如何由“尖锐陡峭”变得“平缓均匀”的！
-    </p>
-
+    <h2>2. 黑盒 JS 可交互动画：采样温度与概率分布调节仪</h2>
     <div class="interactive-card">
       <div class="interactive-title">🎮 动态概率分布与采样控制仪</div>
       
@@ -378,18 +389,7 @@
         </div>
       </div>
 
-      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
-        <canvas id="samplerCanvas" width="500" height="280" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
-        <div style="flex: 1; min-width: 240px;">
-          <div class="logic-box" style="margin-top: 0;">
-            <strong>采样模式判定：</strong><br/>
-            <span id="sample_mode_text" style="font-weight: bold; color: #2563eb;">均衡生成模式 (T=0.7)</span><br/><br/>
-            <strong>Top-1 词汇概率：</strong><br/>
-            <span id="top1_prob_disp" style="font-size: 20px; font-weight: 800; color: #166534;">78.5%</span><br/>
-            候选词保留数: <span id="cand_count_disp" style="font-family: Consolas; font-weight: bold;">3 / 5</span>
-          </div>
-        </div>
-      </div>
+      <canvas id="samplerCanvas" width="500" height="240" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; display: block; margin: 0 auto;"></canvas>
     </div>
 
     <script>
@@ -401,7 +401,6 @@
       function updateSampler() {
         const T = parseFloat(document.getElementById('temp_slider').value);
         const topP = parseFloat(document.getElementById('topp_slider').value);
-
         document.getElementById('temp_disp').innerText = T.toFixed(1);
         document.getElementById('topp_disp').innerText = topP.toFixed(2);
 
@@ -412,72 +411,49 @@
         let probs = expL.map(e => e / sumExp);
 
         let cumSum = 0;
-        let keptCount = 0;
         const filteredProbs = probs.map(p => {
-          if (cumSum < topP) {
-            cumSum += p;
-            keptCount++;
-            return p;
-          }
+          if (cumSum < topP) { cumSum += p; return p; }
           return 0;
         });
-
         const finalSum = filteredProbs.reduce((a, b) => a + b, 0);
         const finalProbs = filteredProbs.map(p => p / finalSum);
 
-        document.getElementById('top1_prob_disp').innerText = (finalProbs[0] * 100).toFixed(1) + '%';
-        document.getElementById('cand_count_disp').innerText = `${keptCount} / 5`;
-
         sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
-        const barW = 44;
-        const spacing = 80;
-        const startX = 60;
-        const baseY = 240;
+        const barW = 44, spacing = 80, startX = 60, baseY = 200;
 
         for (let i = 0; i < words.length; i++) {
           const x = startX + i * spacing;
           const p = finalProbs[i];
-          const barH = p * 190;
+          const barH = p * 150;
 
           sCtx.fillStyle = p > 0 ? '#2563eb' : '#cbd5e1';
           sCtx.fillRect(x - barW/2, baseY - barH, barW, barH);
-
-          sCtx.fillStyle = '#0f172a';
-          sCtx.font = '12px Segoe UI, sans-serif';
-          sCtx.textAlign = 'center';
+          sCtx.fillStyle = '#0f172a'; sCtx.font = '12px Segoe UI'; sCtx.textAlign = 'center';
           sCtx.fillText(words[i], x, baseY + 18);
 
           if (p > 0) {
             sCtx.font = 'bold 11px Consolas';
             sCtx.fillText((p * 100).toFixed(1) + '%', x, baseY - barH - 6);
-          } else {
-            sCtx.fillStyle = '#dc2626';
-            sCtx.font = '10px Consolas';
-            sCtx.fillText('Cut', x, baseY - 6);
           }
         }
       }
-
       document.getElementById('temp_slider').addEventListener('input', updateSampler);
       document.getElementById('topp_slider').addEventListener('input', updateSampler);
       updateSampler();
     </script>
 
-    <h2>4. Python / NumPy 工业级采样器实现</h2>
+    <h2>3. Python / NumPy 工业级采样器实现</h2>
     <pre><code class="language-python">import numpy as np
 
 def sample_next_token(logits: np.ndarray, temperature=0.7, top_p=0.9) -> int:
-    # 1. 应用温度系数
     if temperature > 0:
         logits = logits / temperature
     else:
         return int(np.argmax(logits))
     
-    # 2. 计算 Softmax 概率分布
     probs = np.exp(logits - np.max(logits))
     probs = probs / np.sum(probs)
     
-    # 3. Top-p (Nucleus) 截断
     sorted_indices = np.argsort(probs)[::-1]
     sorted_probs = probs[sorted_indices]
     cumulative_probs = np.cumsum(sorted_probs)
@@ -487,26 +463,22 @@ def sample_next_token(logits: np.ndarray, temperature=0.7, top_p=0.9) -> int:
     valid_probs = probs[valid_indices]
     valid_probs = valid_probs / np.sum(valid_probs)
     
-    # 4. 多项式分布加权随机采样
-    sampled_token_id = np.random.choice(valid_indices, p=valid_probs)
-    return int(sampled_token_id)
+    return int(np.random.choice(valid_indices, p=valid_probs))
 
 test_logits = np.array([4.5, 3.2, 1.8, 0.5, -1.0])
-next_id = sample_next_token(test_logits, temperature=0.7, top_p=0.9)
-print("采样出的 Next Token ID:", next_id)
+print("采样出的 Next Token ID:", sample_next_token(test_logits, 0.7, 0.9))
 </code></pre>
 
-    <h2>5. 打开黑盒：真实工程细节 (Repetition Penalty 重复惩罚)</h2>
+    <h2>4. 打开黑盒：真实工程细节 (Repetition Penalty 重复惩罚)</h2>
     <div class="card">
-      <strong>为什么大模型有时会陷入无限车轱辘话循环？</strong><br/>
-      当模型连续生成了相同的词时，这些词的自注意力点积会异常升高，导致后续 Logits 偏高，从而锁死在死循环中。<br/>
-      在推理引擎中，通常会引入 <strong>Repetition Penalty（重复惩罚，如 1.15）</strong>：如果某个 Token 在过去 64 步中出现过，将其对应的 Logit 强制除以该惩罚因子，有效打破重复怪圈！
+      <strong>打断死循环：</strong><br/>
+      推理引擎中通常会引入 <strong>Repetition Penalty（重复惩罚，如 1.15）</strong>：如果某个 Token 在过去 64 步中出现过，将其对应的 Logit 强制除以该惩罚因子，有效打破重复怪圈！
     </div>
 
-    <h2>6. 动手实验与思考题</h2>
+    <h2>5. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：</strong><br/>
-      在编写 Python 代码或进行数学解题（如写一段 C++ 驱动或算微积分）时，应该将 Temperature 设为高（如 1.2）还是设为 0？为什么？<br/>
+      在编写 Python 代码或进行数学解题时，应该将 Temperature 设为高（如 1.2）还是设为 0？为什么？<br/>
       <em>提示：应该设为 0（贪婪选择）。代码与数学属于确定性逻辑，容错率极低，不需要“天马行空的随机创造力”。</em>
     </div>
 

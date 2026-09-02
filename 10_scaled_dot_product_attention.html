@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -332,24 +346,37 @@
     
     <h1>2.2 缩放点积注意力 (Scaled Dot-Product Attention)</h1>
     <div class="card">
-      <strong>本节目标：</strong>彻底掌握深度学习史上最具影响力的核心公式 $\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$，完成 2 个 Token、2 维特征的全流程极小规模手算与 NumPy 实现。
+      <strong>本节核心认知目标：</strong><br/>
+      彻底掌握深度学习史上最具影响力的核心公式 $\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$，完成 2 个 Token、2 维特征的全流程极小规模手算与 NumPy 实现。
     </div>
 
-    <h2>1. 核心数学公式拆解</h2>
-    <p>
-      缩放点积注意力由以下 4 步连续矩阵流水线构成：
-    </p>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：点积注意力的朴素直觉</h3>
+      <p>
+        在定义了 $Q$ 和 $K$ 之后，最直观的相似度计算就是向量点积 $S = Q \cdot K^T$：两个向量方向越一致，点积越大，分配的 Softmax 注意力权重就越高。
+      </p>
+
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：维度暴涨引发的“Softmax 梯度荒漠”</h3>
+      <p>
+        然而，当大模型将特征维度 $d_k$ 从 16 扩展到 64、128 时，一个致命的统计学问题爆发了：<br/>
+        假设 $Q$ 和 $K$ 的分量是均值为 0、方差为 1 的独立随机变量，它们的点积 $\sum_{i=1}^{d_k} q_i k_i$ 的<strong>方差将线性扩大为 $d_k$（标准差为 $\sqrt{d_k} \approx 11.3$）</strong>！<br/>
+        点积结果动辄达到几十甚至上百。<br/>
+        <span class="mark-danger">当这么大的数值送入 Softmax 时，输出概率会极端二极化为极其尖锐的 0 和 1，Softmax 的导数瞬间归零（落入指数饱和区），反向传播梯度彻底消失！整个模型完全无法训练！</span>
+      </p>
+
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：2017 年 Vaswani 的“除以 $\sqrt{d_k}$”缩放神来之笔</h3>
+      <p>
+        2017 年，Ashish Vaswani 等人在公式中轻轻加入了一个缩放因子：<strong>除以 $\sqrt{d_k}$</strong>！
+        $$\text{Attention}(Q, K, V) = \text{softmax}\left( \frac{Q K^T}{\sqrt{d_k}} \right) V$$
+        这个极简的缩放将方差精准拉回了完美的 $1.0$，彻底消除了 Softmax 梯度饱和问题，让千亿规模深层 Transformer 的稳定收敛成为可能！
+      </p>
+    </div>
+
+    <h2>2. 核心数学公式拆解</h2>
     <div class="logic-box">
       $$\text{Attention}(Q, K, V) = \underbrace{\text{softmax}\left( \frac{\overbrace{Q \times K^T}^{\text{1. 点积打分 S}}}{\underbrace{\sqrt{d_k}}_{\text{2. 尺度缩放}}} \right)}_{\text{3. 归一化注意力权重 A}} \times \underbrace{V}_{\text{4. 加权聚合}}$$
     </div>
-
-    <h2>2. 为什么必须除以 $\sqrt{d_k}$？(防梯度消失的精妙设计)</h2>
-    <p>
-      假设 $Q$ 和 $K$ 中的每个元素都是均值为 0、方差为 1 的独立随机变量。<br/>
-      两个 $d_k$ 维向量的点积 $q \cdot k = \sum_{i=1}^{d_k} q_i k_i$ 的<strong>方差将线性扩大为 $d_k$（标准差为 $\sqrt{d_k}$）</strong>。<br/>
-      <span class="mark-caution">当特征维度 $d_k$ 很大（如 128）时，点积数值会变得极大或极小，送入 Softmax 后会直接落入指数饱和区，导致导数几乎为 0（梯度彻底消失）！</span><br/>
-      除以 $\sqrt{d_k}$ 能将方差重新拉回稳定基准 $1.0$。
-    </p>
 
     <h2>3. 黑盒 JS 可交互动画：动态点积热力图与权重生成器</h2>
     <p>
@@ -434,8 +461,8 @@
           [A[1][0]*V[0][0] + A[1][1]*V[1][0], A[1][0]*V[0][1] + A[1][1]*V[1][1]]
         ];
 
-        document.getElementById('mat_s').innerText = `[[${S[0][0].toFixed(2)}, ${S[0][1].toFixed(2)}],\n [${S[1][0].toFixed(2)}, ${S[1][1].toFixed(2)}]]`;
-        document.getElementById('mat_scaled').innerText = `[[${Scaled[0][0].toFixed(2)}, ${Scaled[0][1].toFixed(2)}],\n [${Scaled[1][0].toFixed(2)}, ${Scaled[1][1].toFixed(2)}]]`;
+        document.getElementById('mat_s').innerText = `[[${S[0][0].toFixed(2)}, ${S[0][1].toFixed(2)}],\n [${S[1][0].toFixed(2)}, ${S[1][0].toFixed(2)}]]`;
+        document.getElementById('mat_scaled').innerText = `[[${Scaled[0][0].toFixed(2)}, ${Scaled[0][1].toFixed(2)}],\n [${Scaled[1][0].toFixed(2)}, ${Scaled[1][0].toFixed(2)}]]`;
         document.getElementById('mat_attn').innerText = `[[${A[0][0].toFixed(3)}, ${A[0][1].toFixed(3)}],\n [${A[1][0].toFixed(3)}, ${A[1][0].toFixed(3)}]]`;
         document.getElementById('mat_out').innerText = `[[${Out[0][0].toFixed(3)}, ${Out[0][1].toFixed(3)}],\n [${Out[1][0].toFixed(3)}, ${Out[1][0].toFixed(3)}]]`;
       }
@@ -448,18 +475,12 @@
 
     <h2>4. 极小规模人工计算 (2 个 Token, 2 维向量完整走查)</h2>
     <div class="logic-box">
-      <strong>已知条件：</strong>序列长度 $L=2$，特征维度 $d_k=2$（因此 $\sqrt{d_k} = \sqrt{2} \approx 1.414$）。<br/>
+      <strong>已知条件：</strong>$L=2, d_k=2 \implies \sqrt{d_k} = \sqrt{2} \approx 1.414$。<br/>
       $$Q = \begin{bmatrix} 1 & 0 \\ 0 & 2 \end{bmatrix}, \quad K = \begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix}, \quad V = \begin{bmatrix} 10 & 0 \\ 0 & 20 \end{bmatrix}$$<br/>
-      <strong>第 1 步：计算点积打分矩阵 $S = Q \times K^T$</strong>
-      $$K^T = \begin{bmatrix} 1 & 0 \\ 1 & 1 \end{bmatrix} \implies S = \begin{bmatrix} 1 & 0 \\ 0 & 2 \end{bmatrix} \times \begin{bmatrix} 1 & 0 \\ 1 & 1 \end{bmatrix} = \begin{bmatrix} 1\times 1 + 0 & 1\times 0 + 0 \\ 0 + 2\times 1 & 0 + 2\times 1 \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ 2 & 2 \end{bmatrix}$$<br/>
-      <strong>第 2 步：除以 $\sqrt{d_k} = 1.414$ 进行尺度缩放</strong>
-      $$\tilde{S} = \frac{S}{\sqrt{2}} \approx \begin{bmatrix} 0.707 & 0.0 \\ 1.414 & 1.414 \end{bmatrix}$$<br/>
-      <strong>第 3 步：按行执行 Softmax 归一化</strong>
-      $$\text{第 1 行： } \text{softmax}([0.707, 0.0]) = \begin{bmatrix} \frac{e^{0.707}}{e^{0.707} + e^0} & \frac{e^0}{e^{0.707} + e^0} \end{bmatrix} \approx \begin{bmatrix} 0.670 & 0.330 \end{bmatrix}$$
-      $$\text{第 2 行： } \text{softmax}([1.414, 1.414]) = \begin{bmatrix} 0.500 & 0.500 \end{bmatrix}$$
-      $$A = \begin{bmatrix} 0.670 & 0.330 \\ 0.500 & 0.500 \end{bmatrix}$$<br/>
-      <strong>第 4 步：加权聚合 Value 矩阵 $Y = A \times V$</strong>
-      $$Y = \begin{bmatrix} 0.670 & 0.330 \\ 0.500 & 0.500 \end{bmatrix} \times \begin{bmatrix} 10 & 0 \\ 0 & 20 \end{bmatrix} = \begin{bmatrix} 0.670\times 10 & 0.330\times 20 \\ 0.500\times 10 & 0.500\times 20 \end{bmatrix} = \begin{bmatrix} 6.70 & 6.60 \\ 5.00 & 10.00 \end{bmatrix}$$
+      <strong>1. 点积 $S = Q K^T$：</strong> $\begin{bmatrix} 1 & 0 \\ 2 & 2 \end{bmatrix}$<br/>
+      <strong>2. 缩放 $\tilde{S} = S / \sqrt{2}$：</strong> $\begin{bmatrix} 0.707 & 0.0 \\ 1.414 & 1.414 \end{bmatrix}$<br/>
+      <strong>3. 按行 Softmax 归一化 $A$：</strong> $\begin{bmatrix} 0.670 & 0.330 \\ 0.500 & 0.500 \end{bmatrix}$<br/>
+      <strong>4. 加权输出 $Y = A \times V$：</strong> $\begin{bmatrix} 6.70 & 6.60 \\ 5.00 & 10.00 \end{bmatrix}$
     </div>
 
     <h2>5. Python / NumPy 极简代码实现</h2>
@@ -467,36 +488,26 @@
 
 def scaled_dot_product_attention(Q: np.ndarray, K: np.ndarray, V: np.ndarray):
     d_k = Q.shape[-1]
-    
-    # 1. 矩阵乘法点积打分
-    scores = np.matmul(Q, K.swapaxes(-1, -2))
-    
-    # 2. 尺度缩放
-    scaled_scores = scores / np.sqrt(d_k)
-    
-    # 3. Softmax 归一化
-    exp_scores = np.exp(scaled_scores - np.max(scaled_scores, axis=-1, keepdims=True))
+    scores = np.matmul(Q, K.swapaxes(-1, -2)) / np.sqrt(d_k)
+    exp_scores = np.exp(scores - np.max(scores, axis=-1, keepdims=True))
     attn_weights = exp_scores / np.sum(exp_scores, axis=-1, keepdims=True)
-    
-    # 4. 加权聚合 Value
     output = np.matmul(attn_weights, V)
     return output, attn_weights
 
 Q_test = np.array([[1.0, 0.0], [0.0, 2.0]])
 K_test = np.array([[1.0, 1.0], [0.0, 1.0]])
 V_test = np.array([[10.0, 0.0], [0.0, 20.0]])
-
 out, weights = scaled_dot_product_attention(Q_test, K_test, V_test)
-print("注意力权重矩阵 A:\n", np.round(weights, 3))
-print("最终输出 Y:\n", np.round(out, 2))
+print("注意力权重 A:\n", np.round(weights, 3))
+print("输出 Y:\n", np.round(out, 2))
 </code></pre>
 
     <h2>6. 打开黑盒：真实工程细节 (FlashAttention 思想萌芽)</h2>
     <div class="card">
       <strong>标准 Attention 的内存致命伤：</strong><br/>
-      在上述公式中，中间矩阵 $S$ 和 $A$ 的形状为 $[B, H, L, L]$。<br/>
-      当上下文长度 $L=32768$（32k）时，$L \times L \approx 10^9$（10 亿个浮点数），<strong>仅仅存放这一个中间注意力矩阵就需要 4GB 显存！</strong><br/>
-      在 Phase 4 中我们将看到，FlashAttention 巧妙利用分块在线 Softmax 算法（Online Softmax），完全不在显存中保存 $S$ 和 $A$，直接在 SRAM 寄存器中一步算出最终输出 $Y$！
+      中间矩阵 $S$ 和 $A$ 的形状为 $[B, H, L, L]$。<br/>
+      当上下文长度 $L=32768$（32k）时，仅存放一个中间注意力矩阵就需要 4GB 显存！<br/>
+      FlashAttention 巧妙利用分块在线 Softmax 算法，完全不在显存中保存 $S$ 和 $A$，直接在 SRAM 寄存器中一步算出最终输出 $Y$！
     </div>
 
     <h2>7. 动手实验与思考题</h2>

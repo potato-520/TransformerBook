@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -332,38 +346,43 @@
     
     <h1>3.1 位置编码与 RoPE (Positional Encoding & Rotary Embedding)</h1>
     <div class="card">
-      <strong>本节目标：</strong>理解为什么 Attention 天生是无序的（集合运算），掌握从早期正余弦绝对位置编码到现代大模型（LLaMA/Qwen/Mistral）标配 RoPE（旋转位置编码）的数学演进与复数旋转几何直觉。
+      <strong>本节核心认知目标：</strong><br/>
+      理解为什么 Attention 天生是无序的（集合运算），掌握从早期正余弦绝对位置编码到现代大模型（LLaMA/Qwen/Mistral）标配 RoPE（旋转位置编码）的数学演进与复数旋转几何直觉。
     </div>
 
-    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
-    <p>
-      在自注意力点积计算中：
-      $$S_{ij} = \frac{q_i \cdot k_j}{\sqrt{d_k}}$$
-      如果我们打乱输入序列的顺序（例如将 <code>"我 吃 苹果"</code> 打乱成 <code>"苹果 吃 我"</code>），每个 Token 之间的相对点积打分<strong>完全不会发生任何改变</strong>！<br/>
-      <span class="mark-caution">自注意力机制本质上是一种无序的“集合操作（Set Operation）”</span>。必须在输入特征中主动注入<strong>位置信息（Position Information）</strong>。
-    </p>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：Attention 的无序“词袋”本性与绝对编码</h3>
+      <p>
+        在丢弃了 RNN 的时钟推进后，自注意力机制变成了一种<strong>纯粹的集合操作（Set Operation）</strong>：打乱句中单词顺序，两两点积完全不变！<br/>
+        2017 年的经典 Transformer 采用<strong>绝对位置编码（Absolute PE）</strong>：构造一组正余弦波形向量 $P$，直接加在词向量上：$X_{pos} = X + P$。
+      </p>
 
-    <h2>2. 演进历程：从绝对位置到相对旋转 (RoPE)</h2>
-    <ul>
-      <li><strong>绝对位置编码（Absolute PE, 经典 Transformer/GPT-2）</strong>：直接在 Embedding 向量上加上一个正弦波位置向量 $X_{pos} = X + P$。缺点：外推性差，无法直接体现相对距离。</li>
-      <li><strong>RoPE（Rotary Position Embedding, 现代 LLM 标配）</strong>：不改变向量模长，而是<strong>将 2D 特征平面上的向量按位置序号 $m$ 逆时针旋转 $m\theta$ 角度</strong>！
-        $$R_{\Theta, m} \cdot \vec{x} = \begin{pmatrix} \cos m\theta & -\sin m\theta \\ \sin m\theta & \cos m\theta \end{pmatrix} \begin{pmatrix} x_1 \\ x_2 \end{pmatrix}$$
-      </li>
-    </ul>
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：长上下文外推的“雪崩瘫痪”与相对距离丢失</h3>
+      <p>
+        然而，绝对位置编码很快暴露了致命软肋：<br/>
+        1. <strong>外推性（Extrapolation）极差</strong>：如果模型在 2048 长度下训练，当输入 4096 长度的文本时，模型对后半段从未见过的位置向量毫无感知，直接胡言乱语；<br/>
+        2. <strong>无法直接体现“相对距离”</strong>：在语言中，两个词之间相隔 3 个位置还是 50 个位置是核心关键，但绝对位置相加无法在点积中自然显现相对距离。
+      </p>
 
-    <h2>3. 为什么 RoPE 如此神奇？ (相对位置内积恒等式)</h2>
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：2021 年苏剑林与复平面旋转（RoPE）的惊世推导</h3>
+      <p>
+        2021 年，中国青年学者<strong>苏剑林（追一科技）</strong>在博客“科学空间”中发布了划时代的 <strong>RoPE（Rotary Position Embedding，旋转位置编码）</strong>！<br/>
+        他没有在向量上做粗暴的加法，而是巧妙借助复数欧拉公式：<strong>将 2D 特征子平面上的 Query 和 Key 向量，按位置序号 $m$ 逆时针旋转 $m\theta$ 角度！</strong><br/>
+        这一设计的数学神迹在于：<strong>旋转后的向量内积，完全只取决于两个词的相对距离 $(m - n)$！</strong>
+        $$\langle R_m \vec{q}, R_n \vec{k} \rangle = \vec{q}^T R_{n - m} \vec{k}$$
+        由于无需额外加法、具备天然的相对衰减性与超强外推性，RoPE 瞬间征服了全球学术界与工业界，成为 LLaMA-1/2/3、Mistral、Qwen-2.5 等当代顶尖大模型的绝对世界标准！
+      </p>
+    </div>
+
+    <h2>2. 为什么 RoPE 如此神奇？ (相对位置内积恒等式)</h2>
     <div class="logic-box">
-      <strong>RoPE 的内积不变性定理：</strong><br/>
-      位置为 $m$ 的 Query 与位置为 $n$ 的 Key 旋转后的点积，仅取决于它们的<strong>相对距离 $(m - n)$</strong>：
-      $$\langle R_m \vec{q}, R_n \vec{k} \rangle = \vec{q}^T R_m^T R_n \vec{k} = \vec{q}^T R_{n - m} \vec{k}$$
-      这完美保留了相对距离信息，并且随着相对距离增加，内积自然衰减！
+      <strong>复平面 2D 旋转公式：</strong>
+      $$R_{\Theta, m} \cdot \vec{x} = \begin{pmatrix} \cos m\theta & -\sin m\theta \\ \sin m\theta & \cos m\theta \end{pmatrix} \begin{pmatrix} x_1 \\ x_2 \end{pmatrix}$$
+      高维向量中，每相邻两个维度组成一个独立的 2D 旋转平面，频率 $\theta_i = 10000^{-2i/d}$ 由快到慢递减（类似于时钟的秒针、分针与时针）。
     </div>
 
-    <h2>4. 黑盒 JS 可交互动画：复数平面 2D 向量旋转与内积衰减</h2>
-    <p>
-      调节 Token 位置序号 $m$ 与 $n$，观察 2D 向量在复平面上的旋转，并观察点积值是如何随着相对距离 $(m-n)$ 发生平滑衰减的！
-    </p>
-
+    <h2>3. 黑盒 JS 可交互动画：复数平面 2D 向量旋转与内积衰减</h2>
     <div class="interactive-card">
       <div class="interactive-title">🎮 RoPE 二维旋转位置编码动态交互仪</div>
       
@@ -386,14 +405,9 @@
           <div class="logic-box" style="margin-top: 0;">
             <strong>相对位置差值：</strong><br/>
             $\Delta pos = m - n = $ <span id="diff_disp" style="font-weight: bold; color: #2563eb;">-3</span><br/><br/>
-            <strong>旋转后夹角与点积：</strong><br/>
-            $Q$ 旋转角: <span id="angle_q" style="font-family: Consolas;">40°</span><br/>
-            $K$ 旋转角: <span id="angle_k" style="font-family: Consolas;">100°</span><br/>
+            <strong>旋转后相对内积：</strong><br/>
             相对旋转点积: <span id="rope_dot_disp" style="font-size: 20px; font-weight: 800; color: #166534;">0.500</span>
           </div>
-          <p style="font-size: 13.5px; color: #64748b;">
-            💡 <strong>工程物理直觉</strong>：高维向量中，每相邻两个维度 $(x_{2i}, x_{2i+1})$ 组成一个 2D 独立旋转平面，不同频段 $\theta_i = 10000^{-2i/d}$ 对应不同尺度的距离波长（类似时钟的时针、分针、秒针）。
-          </p>
         </div>
       </div>
     </div>
@@ -429,9 +443,6 @@
 
         const thetaQ = m * baseTheta;
         const thetaK = n * baseTheta;
-
-        document.getElementById('angle_q').innerText = (thetaQ * 180 / Math.PI).toFixed(0) + '°';
-        document.getElementById('angle_k').innerText = (thetaK * 180 / Math.PI).toFixed(0) + '°';
         document.getElementById('rope_dot_disp').innerText = Math.cos(thetaQ - thetaK).toFixed(3);
 
         const radius = 110;
@@ -443,9 +454,7 @@
         rCtx.strokeStyle = '#2563eb';
         rCtx.fillStyle = '#2563eb';
         rCtx.lineWidth = 3;
-        rCtx.beginPath();
-        rCtx.moveTo(originX, originY); rCtx.lineTo(qx, qy);
-        rCtx.stroke();
+        rCtx.beginPath(); rCtx.moveTo(originX, originY); rCtx.lineTo(qx, qy); rCtx.stroke();
         rCtx.beginPath(); rCtx.arc(qx, qy, 5, 0, Math.PI * 2); rCtx.fill();
         rCtx.font = 'bold 12px Consolas';
         rCtx.fillText(`Q (m=${m})`, qx + 8, qy + 4);
@@ -453,9 +462,7 @@
         rCtx.strokeStyle = '#16a34a';
         rCtx.fillStyle = '#16a34a';
         rCtx.lineWidth = 3;
-        rCtx.beginPath();
-        rCtx.moveTo(originX, originY); rCtx.lineTo(kx, ky);
-        rCtx.stroke();
+        rCtx.beginPath(); rCtx.moveTo(originX, originY); rCtx.lineTo(kx, ky); rCtx.stroke();
         rCtx.beginPath(); rCtx.arc(kx, ky, 5, 0, Math.PI * 2); rCtx.fill();
         rCtx.fillText(`K (n=${n})`, kx + 8, ky + 4);
       }
@@ -465,21 +472,19 @@
       drawRoPE();
     </script>
 
-    <h2>5. Python / NumPy 极简 RoPE 实现</h2>
+    <h2>4. Python / NumPy 极简 RoPE 实现</h2>
     <pre><code class="language-python">import numpy as np
 
 def apply_rope(x: np.ndarray, pos: int, base=10000.0) -> np.ndarray:
     dim = len(x)
     i = np.arange(0, dim, 2)
     theta = 1.0 / (base ** (i / dim))
-    
     m_theta = pos * theta
     cos_m = np.cos(m_theta)
     sin_m = np.sin(m_theta)
     
     x_even = x[0::2]
     x_odd = x[1::2]
-    
     rot_even = x_even * cos_m - x_odd * sin_m
     rot_odd = x_even * sin_m + x_odd * cos_m
     
@@ -489,20 +494,17 @@ def apply_rope(x: np.ndarray, pos: int, base=10000.0) -> np.ndarray:
     return output
 
 q = np.array([1.0, 0.0, 0.5, 0.5])
-q_rot_pos0 = apply_rope(q, pos=0)
-q_rot_pos5 = apply_rope(q, pos=5)
-
-print("位置 0 旋转后:", q_rot_pos0)
-print("位置 5 旋转后:", np.round(q_rot_pos5, 4))
+print("位置 0 旋转后:", apply_rope(q, pos=0))
+print("位置 5 旋转后:", np.round(apply_rope(q, pos=5), 4))
 </code></pre>
 
-    <h2>6. 打开黑盒：真实工程细节 (RoPE 与长上下文外推)</h2>
+    <h2>5. 打开黑盒：真实工程细节 (YaRN 与 128k 上下文外推)</h2>
     <div class="card">
-      <strong>为什么 RoPE 能轻松扩展到 128k 上下文？</strong><br/>
-      通过调整基频 $base$（例如从 10000 提升到 500000，即 <strong>YaRN / NTK-aware RoPE</strong>），相当于降低了高频旋转速度，让模型在更稀疏的旋转角下识别更长远的位置距离，从而零成本实现上下文外推扩展！
+      <strong>为什么 RoPE 能扩展到 128k 上下文？</strong><br/>
+      通过调整基频 $base$（从 10,000 提升至 500,000，即 <strong>YaRN / NTK-aware RoPE</strong>），相当于降低了高频旋转速度，让模型在更稀疏的旋转角下识别更长远的位置距离，零成本实现上下文外推！
     </div>
 
-    <h2>7. 动手实验与思考题</h2>
+    <h2>6. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：</strong><br/>
       RoPE 仅作用于 $Q$ 和 $K$ 张量，请问需要对 $V$（Value）张量执行 RoPE 旋转吗？为什么？<br/>

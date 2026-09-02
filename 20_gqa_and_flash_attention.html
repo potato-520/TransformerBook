@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -332,109 +346,65 @@
     
     <h1>4.4 GQA 与 FlashAttention 思想 (GQA & FlashAttention)</h1>
     <div class="card">
-      <strong>本节目标：</strong>理解现代大模型是如何在架构层（GQA 分组查询注意力）与硬件层（FlashAttention IO 优化）两路并发，彻底攻克长上下文显存爆炸与 GPU 访存带宽瓶颈的。
+      <strong>本节核心认知目标：</strong><br/>
+      理解现代大模型是如何在架构层（GQA 分组查询注意力）与硬件层（FlashAttention IO 优化）两路并发，彻底攻克长上下文显存爆炸与 GPU 访存带宽瓶颈的。
     </div>
 
-    <h2>1. 架构演进：MHA $\to$ MQA $\to$ GQA</h2>
-    <ul>
-      <li><strong>MHA (Multi-Head Attention, 2017)</strong>：每个 Query 头配 1 个独立的 Key 和 Value 头（KV 头数 = 32）。缺点：KV Cache 极其庞大。</li>
-      <li><strong>MQA (Multi-Query Attention, 2019)</strong>：所有 Query 头强行共享 1 个单调的 Key 和 Value 头（KV 头数 = 1）。优点：显存暴降 32 倍；缺点：模型容量与表达精度受损。</li>
-      <li><strong>GQA (Grouped-Query Attention, 现代主流 LLaMA-3 / Mistral 标配)</strong>：折中方案！例如 32 个 Query 头分为 8 组，<strong>每 4 个 Query 头共享 1 个 KV 头</strong>（KV 头数 = 8）。既保全了极高的语义精度，又将 KV 显存开销直接削减为原来的 $\frac{1}{4}$！</li>
-    </ul>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：GPU 算力狂飙与“内存墙（Memory Wall）”</h3>
+      <p>
+        过去十年中，GPU 的浮点计算吞吐（FLOPs）增长了上千倍，但 <strong>HBM 显存的读写带宽只增长了几十倍</strong>。<br/>
+        计算快如闪电，搬运数据却像蜗牛爬行，现代 GPU 的大量核心在日常计算中陷入了漫长无聊的<strong>“显存读写等待（Memory-bound）”</strong>。
+      </p>
 
-    <h2>2. FlashAttention 核心哲学：向 GPU 存储层级要性能</h2>
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：传统 Attention 频繁往返 HBM 的性能大灾难</h3>
+      <p>
+        在标准 Attention 计算中，中间产生的 $L \times L$ 矩阵极大。<br/>
+        系统必须先把 $QK^T$ 算好写回全局显存 HBM，再从 HBM 读出来做 Softmax，再写回 HBM，再读出来乘 $V$……<br/>
+        <span class="mark-danger">测量表明：PyTorch 计算标准 Attention 时，超过 80% 的时间都浪费在 GPU 核心与 HBM 之间反复搬运数据上！</span>
+      </p>
+
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：2022 年 Tri Dao 与 FlashAttention 的硬件级封神</h3>
+      <p>
+        2022 年，斯坦福大学博士生 <strong>Tri Dao（道特里）</strong>提出了震惊业界的 <strong>FlashAttention</strong>：<br/>
+        他巧妙借助经典的 <strong>Online Softmax（在线动态 Softmax）</strong>算法进行分块（Tiling）：<br/>
+        把 $Q, K, V$ 切成一个个小矩阵块完全装入 <strong>GPU 片上超高速 SRAM 缓存（19 TB/s 带宽）</strong>，在高速缓存内一步直接算出最终结果，<strong>全程完全不把庞大的中间 $L \times L$ 矩阵写回全局显存！</strong><br/>
+        这一纯粹基于硬件存储层级优化的创新，<strong>在数学精度 100% 毫无损失的前提下，直接让 Attention 计算速度飙升 3~5 倍，显存暴降数倍</strong>，成为了当今所有大模型训练推理的底层绝对核心！
+      </p>
+    </div>
+
+    <h2>2. GQA (Grouped-Query Attention) 架构演进</h2>
     <div class="logic-box">
-      <strong>GPU 的金字塔存储瓶颈：</strong><br/>
-      SRAM 片上高速缓存（容量极小 ~数十KB，但速度高达 19 TB/s） $\gg$ HBM 全局大显存（容量大 80GB，但速度仅 2~3 TB/s，慢了将近 10 倍！）。<br/>
-      传统 Attention 频繁将超大 $L \times L$ 中间矩阵从 SRAM 写回 HBM 显存，导致 GPU 核心长时间卡在<strong>内存读写等待</strong>上。<br/>
-      <strong>FlashAttention 核心思想：分块切片（Tiling）+ 在线 Softmax 动态更新（Online Softmax）！</strong><br/>
-      将 $Q, K, V$ 切成一个个小 Tile 完全装入 SRAM，在高速缓存内一步算出局部的 Attention 聚合结果，**全程完全不生成、不写回庞大的 $L \times L$ 注意力矩阵！**
+      - <strong>MHA (2017)</strong>：32 个 Q 头配 32 个 KV 头，KV 显存巨大；<br/>
+      - <strong>MQA (2019)</strong>：32 个 Q 头强行共用 1 个 KV 头，显存降 32 倍但精度略有受损；<br/>
+      - <strong>GQA (现代主流)</strong>：折中方案！32 个 Q 头分为 8 组，<strong>每 4 个 Q 头共享 1 个 KV 头</strong>，精度与显存双赢！
     </div>
 
-    <h2>3. 黑盒 JS 可交互动画：GPU 存储层级搬运开销对比模拟</h2>
-    <p>
-      点击下方按钮，对比传统 Attention 与 FlashAttention 在 GPU 存储层级中的数据搬运流向与耗时！
-    </p>
-
+    <h2>3. 黑盒 JS 可交互动画：FlashAttention 片上高速计算流向</h2>
     <div class="interactive-card">
-      <div class="interactive-title">🎮 FlashAttention 硬件 IO 优化流向模拟器</div>
-      
-      <div class="control-panel">
-        <button class="btn" onclick="runIOComparison(false)" style="background: #dc2626;">1. 传统 Attention (频繁往返 HBM)</button>
-        <button class="btn" onclick="runIOComparison(true)" style="background: #16a34a;">2. FlashAttention (SRAM 片内分块流式计算)</button>
-      </div>
-
-      <canvas id="faCanvas" width="700" height="260" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; display: block; margin: 0 auto;"></canvas>
+      <div class="interactive-title">🎮 FlashAttention 硬件 IO 优化模拟器</div>
+      <canvas id="faCanvas" width="600" height="200" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; display: block; margin: 0 auto;"></canvas>
     </div>
 
     <script>
       const faC = document.getElementById('faCanvas');
       const faCtx = faC.getContext('2d');
+      faCtx.fillStyle = '#f0fdf4'; faCtx.strokeStyle = '#16a34a'; faCtx.lineWidth = 2;
+      faCtx.beginPath(); faCtx.roundRect(50, 20, 500, 60, 6); faCtx.fill(); faCtx.stroke();
+      faCtx.fillStyle = '#166534'; faCtx.font = 'bold 12px Segoe UI';
+      faCtx.fillText('SRAM 片上超高速缓存 (19 TB/s) - Tile 分块闭环计算', 80, 55);
 
-      function drawStorageLayout(isFlash) {
-        faCtx.clearRect(0, 0, faC.width, faC.height);
-
-        faCtx.fillStyle = '#f0fdf4';
-        faCtx.strokeStyle = '#16a34a';
-        faCtx.lineWidth = 2;
-        faCtx.beginPath();
-        faCtx.roundRect(80, 30, 540, 70, 8);
-        faCtx.fill(); faCtx.stroke();
-        faCtx.fillStyle = '#166534';
-        faCtx.font = 'bold 13px Segoe UI';
-        faCtx.textAlign = 'left';
-        faCtx.fillText('SRAM (GPU 片上超高速缓存 ~19 TB/s)', 100, 55);
-
-        faCtx.fillStyle = '#eff6ff';
-        faCtx.strokeStyle = '#2563eb';
-        faCtx.beginPath();
-        faCtx.roundRect(80, 160, 540, 70, 8);
-        faCtx.fill(); faCtx.stroke();
-        faCtx.fillStyle = '#1e40af';
-        faCtx.fillText('HBM (GPU 全局大显存 ~2 TB/s)', 100, 185);
-
-        if (!isFlash) {
-          faCtx.strokeStyle = '#dc2626';
-          faCtx.lineWidth = 3;
-          faCtx.beginPath();
-          faCtx.moveTo(250, 100); faCtx.lineTo(250, 160);
-          faCtx.moveTo(450, 160); faCtx.lineTo(450, 100);
-          faCtx.stroke();
-          faCtx.fillStyle = '#dc2626';
-          faCtx.font = 'bold 11px Consolas';
-          faCtx.textAlign = 'center';
-          faCtx.fillText('大量写入中间 L*L 矩阵', 250, 135);
-          faCtx.fillText('再次读回中间矩阵', 450, 135);
-        } else {
-          faCtx.strokeStyle = '#16a34a';
-          faCtx.lineWidth = 4;
-          faCtx.beginPath();
-          faCtx.arc(350, 65, 18, 0, Math.PI * 2);
-          faCtx.stroke();
-          faCtx.fillStyle = '#166534';
-          faCtx.font = 'bold 12px Segoe UI';
-          faCtx.textAlign = 'center';
-          faCtx.fillText('Tile 分块在线 Softmax 闭环计算 (零 HBM 往返!)', 350, 95);
-        }
-      }
-
-      function runIOComparison(isFlash) {
-        drawStorageLayout(isFlash);
-      }
-
-      drawStorageLayout(true);
+      faCtx.fillStyle = '#eff6ff'; faCtx.strokeStyle = '#2563eb';
+      faCtx.beginPath(); faCtx.roundRect(50, 120, 500, 60, 6); faCtx.fill(); faCtx.stroke();
+      faCtx.fillStyle = '#1e40af';
+      faCtx.fillText('HBM 全局大显存 (2 TB/s) - 零中间矩阵读写往返！', 80, 155);
     </script>
 
-    <h2>4. 打开黑盒：真实工程细节 (FlashAttention-2 & FlashAttention-3)</h2>
-    <div class="card">
-      <strong>硬件演进与算子重塑：</strong><br/>
-      FlashAttention 的作者 Tri Dao 在 2023~2024 年相继推出了 <strong>FlashAttention-2 与 3</strong>，针对 NVIDIA Hopper 架构（H100/H200）的 Tensor Memory Accelerator (TMA) 和异步流水线重写了底层 Warp 级调度，实现了高达 75% 的硬件极限利用率（浮点吞吐接近 700 TFLOPS）！
-    </div>
-
-    <h2>5. 动手实验与思考题</h2>
+    <h2>4. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：</strong><br/>
-      FlashAttention 带来的计算结果与传统标准 Attention 在数学上是完全完全精确等价的，还是只是一个近似？<br/>
+      FlashAttention 的输出结果与标准 Attention 在数学上是否完全相等？<br/>
       <em>提示：数学上 100% 精确等价！它完全不损失任何精度，纯粹是通过算法重排消除了不必要的显存 IO 搬运。</em>
     </div>
 

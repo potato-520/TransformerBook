@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -332,122 +346,108 @@
     
     <h1>2.3 多头注意力机制 (Multi-Head Attention, MHA)</h1>
     <div class="card">
-      <strong>本节目标：</strong>理解为什么单个 Attention 不够用，掌握多头注意力（MHA）的“特征子空间多路复用”思想，彻底吃透张量维度的切分（Split）、并行计算与合并重组（Concat & Projection）流水线。
+      <strong>本节核心认知目标：</strong><br/>
+      理解为什么单个 Attention 不够用，掌握多头注意力（MHA）的“特征子空间多路复用”思想，彻底吃透张量维度的切分（Split）、并行计算与合并重组（Concat & Projection）流水线。
     </div>
 
-    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
-    <p>
-      在处理自然语言时，一个单词在句子中往往承担着<strong>多重不同的语境关系</strong>：
-    </p>
-    <ul>
-      <li><strong>语法依赖头（Head 1）</strong>：关注主谓宾搭配（例如 <code>"The cat"</code> 关注动词 <code>"sat"</code>）；</li>
-      <li><strong>指代消解头（Head 2）</strong>：关注代词指代（例如 <code>"it"</code> 锁定 <code>"animal"</code>）；</li>
-      <li><strong>时空因果头（Head 3）</strong>：关注时间与地点状语。</li>
-    </ul>
-    <p>
-      <strong>多头注意力（Multi-Head Attention）</strong>通过将总特征维度 $D_{model}$ 切分为 $H$ 个互不干扰的独立子空间（每个子空间维度 $d_k = D_{model} / H$），让各个 Head 能够并行关注不同维度的模式。
-    </p>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：单头注意力（Single-Head）的初级尝试</h3>
+      <p>
+        最初，研究人员尝试在整整 4096 维的庞大特征空间上直接运行单一的缩放点积注意力，希望用这一个大矩阵把所有词间关系一网打尽。
+      </p>
+
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：多重语境关系的“平均化坍塌”</h3>
+      <p>
+        然而，自然语言中的语境关系是极其错综复杂的多维网络：<br/>
+        - <strong>Head 1 关注语法依赖</strong>：例如主谓宾搭配（<code>"The cat"</code> 关注动词 <code>"sat"</code>）；<br/>
+        - <strong>Head 2 关注代词指代</strong>：例如代词 <code>"it"</code> 锁定名词 <code>"animal"</code>；<br/>
+        - <strong>Head 3 关注时空状语</strong>：例如时间与地点伴随关系。<br/>
+        <span class="mark-danger">如果只用单个注意力头，Softmax 会强行把这几种完全不同维度的模式混合求平均，导致模型顾此失彼，特征表达被严重稀释钝化！</span>
+      </p>
+
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：诺姆·沙泽尔（Noam Shazeer）与特征子空间多路复用</h3>
+      <p>
+        Google 天才研究员<strong>诺姆·沙泽尔（Noam Shazeer）</strong>提出了极具启发性的 <strong>Multi-Head Attention（多头注意力机制）</strong>：<br/>
+        <em>“不要在一个 4096 维的大空间里单打独斗，而是把它切分成 32 个独立的 128 维低维子空间！”</em><br/>
+        每个子空间（每个 Head）就像一位佩戴不同滤镜的专业侦探，互不干扰地并行捕捉特定维度的语义模式，最后再通过拼接（Concat）与线性投影 $W_O$ 完美重组！<br/>
+        更绝妙的是：<strong>总计算量（FLOPs）与单头完全一模一样，但模型的表征抽取能力提升了数十倍！</strong>
+      </p>
+    </div>
 
     <h2>2. Tensor Shape 全链路流转轨迹</h2>
     <div class="logic-box">
       <strong>张量变形记（Tensor Reshape Pipeline）：</strong><br/>
       1. 输入张量 $X$：<span class="shape-badge">[B, L, D]</span> (例如 Batch=2, SeqLen=512, Dim=4096)<br/>
-      2. 线性投影 QKV：<span class="shape-badge">[B, L, D]</span> $\to$ 维度切分与转置：<span class="shape-badge">[B, H, L, d_k]</span> (例如 Head=32, $d_k=128$)<br/>
+      2. 线性投影 QKV 并分头转置：<span class="shape-badge">[B, H, L, d_k]</span> (Head=32, $d_k=128$)<br/>
       3. 并行多头 Attention：$Q \times K^T \implies$ <span class="shape-badge">[B, H, L, L]</span> $\times V \implies$ <span class="shape-badge">[B, H, L, d_k]</span><br/>
       4. 多头拼接（Concat）：转置回 <span class="shape-badge">[B, L, H \cdot d_k] = [B, L, D]</span><br/>
-      5. 最终输出线性投影 $W_O$：<span class="shape-badge">[B, L, D]</span> $\times [D, D] \implies$ <span class="shape-badge">[B, L, D]</span>
+      5. 最终输出投影 $W_O$：<span class="shape-badge">[B, L, D]</span> $\times [D, D] \implies$ <span class="shape-badge">[B, L, D]</span>
     </div>
 
     <h2>3. 黑盒 JS 可交互动画：多头分流与重组可视化</h2>
-    <p>
-      下方展示了一个将 $D_{model}=8$ 的输入切分为 $H=2$ 个独立注意力头（每个 Head $d_k=4$），并行计算后再拼接投影的全过程：
-    </p>
-
     <div class="interactive-card">
       <div class="interactive-title">🎮 多头注意力张量流动模拟器</div>
-      
-      <div class="control-panel">
-        <button class="btn" onclick="animateMHA()">▶ 播放多头切分与合并数据流</button>
-      </div>
-
-      <canvas id="mhaCanvas" width="700" height="300" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; display: block; margin: 0 auto;"></canvas>
+      <canvas id="mhaCanvas" width="600" height="240" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; display: block; margin: 0 auto;"></canvas>
     </div>
 
     <script>
       const mCanvas = document.getElementById('mhaCanvas');
       const mCtx = mCanvas.getContext('2d');
 
-      function drawMHALayout(progress) {
+      function drawMHALayout() {
         mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
 
-        // 1. 输入 X [L, D]
+        // Input
         mCtx.fillStyle = '#eff6ff';
         mCtx.strokeStyle = '#2563eb';
         mCtx.lineWidth = 2;
         mCtx.beginPath();
-        mCtx.roundRect(40, 100, 80, 100, 6);
+        mCtx.roundRect(30, 70, 90, 100, 6);
         mCtx.fill(); mCtx.stroke();
         mCtx.fillStyle = '#1e40af';
         mCtx.font = 'bold 12px Consolas';
         mCtx.textAlign = 'center';
-        mCtx.fillText('Input X', 80, 145);
-        mCtx.fillText('[L, 4096]', 80, 165);
+        mCtx.fillText('Input X', 75, 115);
+        mCtx.fillText('[L, 4096]', 75, 135);
 
-        // 2. Head 1 与 Head 2 分流
-        const h1Y = 50, h2Y = 170;
-
-        // Head 1
+        // Heads
+        const h1Y = 30, h2Y = 130;
         mCtx.fillStyle = '#f0fdf4';
         mCtx.strokeStyle = '#16a34a';
-        mCtx.beginPath();
-        mCtx.roundRect(260, h1Y, 150, 70, 6);
-        mCtx.fill(); mCtx.stroke();
+        mCtx.beginPath(); mCtx.roundRect(220, h1Y, 160, 65, 6); mCtx.fill(); mCtx.stroke();
         mCtx.fillStyle = '#166534';
-        mCtx.fillText('Head 1 (语法特征)', 335, h1Y + 30);
-        mCtx.fillText('Q1, K1, V1 [L, 128]', 335, h1Y + 50);
+        mCtx.fillText('Head 1 (语法特征)', 300, h1Y + 28);
+        mCtx.fillText('Q1, K1, V1 [L, 128]', 300, h1Y + 48);
 
-        // Head 2
         mCtx.fillStyle = '#fdf4ff';
         mCtx.strokeStyle = '#9333ea';
-        mCtx.beginPath();
-        mCtx.roundRect(260, h2Y, 150, 70, 6);
-        mCtx.fill(); mCtx.stroke();
+        mCtx.beginPath(); mCtx.roundRect(220, h2Y, 160, 65, 6); mCtx.fill(); mCtx.stroke();
         mCtx.fillStyle = '#581c87';
-        mCtx.fillText('Head 2 (指代特征)', 335, h2Y + 30);
-        mCtx.fillText('Q2, K2, V2 [L, 128]', 335, h2Y + 50);
+        mCtx.fillText('Head 2 (指代特征)', 300, h2Y + 28);
+        mCtx.fillText('Q2, K2, V2 [L, 128]', 300, h2Y + 48);
 
-        // 3. Concat & Output
+        // Output
         mCtx.fillStyle = '#eff6ff';
         mCtx.strokeStyle = '#2563eb';
-        mCtx.beginPath();
-        mCtx.roundRect(540, 100, 100, 100, 6);
-        mCtx.fill(); mCtx.stroke();
+        mCtx.beginPath(); mCtx.roundRect(470, 70, 100, 100, 6); mCtx.fill(); mCtx.stroke();
         mCtx.fillStyle = '#1e40af';
-        mCtx.fillText('Concat & Wo', 590, 145);
-        mCtx.fillText('Output [L, 4096]', 590, 165);
+        mCtx.fillText('Concat & Wo', 520, 115);
+        mCtx.fillText('[L, 4096]', 520, 135);
 
-        // 连线
+        // Lines
         mCtx.strokeStyle = '#94a3b8';
         mCtx.setLineDash([4, 4]);
         mCtx.beginPath();
-        mCtx.moveTo(120, 150); mCtx.lineTo(260, h1Y + 35);
-        mCtx.moveTo(120, 150); mCtx.lineTo(260, h2Y + 35);
-        mCtx.moveTo(410, h1Y + 35); mCtx.lineTo(540, 150);
-        mCtx.moveTo(410, h2Y + 35); mCtx.lineTo(540, 150);
+        mCtx.moveTo(120, 120); mCtx.lineTo(220, h1Y + 32);
+        mCtx.moveTo(120, 120); mCtx.lineTo(220, h2Y + 32);
+        mCtx.moveTo(380, h1Y + 32); mCtx.lineTo(470, 120);
+        mCtx.moveTo(380, h2Y + 32); mCtx.lineTo(470, 120);
         mCtx.stroke();
         mCtx.setLineDash([]);
       }
 
-      function animateMHA() {
-        let p = 0;
-        const timer = setInterval(() => {
-          p += 0.05;
-          drawMHALayout(p);
-          if (p >= 1.0) clearInterval(timer);
-        }, 30);
-      }
-
-      drawMHALayout(1.0);
+      drawMHALayout();
     </script>
 
     <h2>4. Python / NumPy 极简多头注意力实现</h2>
@@ -457,7 +457,7 @@ class MultiHeadAttention:
     def __init__(self, d_model=4096, n_heads=32):
         self.d_model = d_model
         self.n_heads = n_heads
-        self.d_k = d_model // n_heads  # 128
+        self.d_k = d_model // n_heads
         
         self.W_q = np.random.randn(d_model, d_model) * 0.02
         self.W_k = np.random.randn(d_model, d_model) * 0.02
@@ -466,35 +466,21 @@ class MultiHeadAttention:
 
     def forward(self, x):
         B, L, D = x.shape
+        q = np.dot(x, self.W_q).reshape(B, L, self.n_heads, self.d_k).transpose(0, 2, 1, 3)
+        k = np.dot(x, self.W_k).reshape(B, L, self.n_heads, self.d_k).transpose(0, 2, 1, 3)
+        v = np.dot(x, self.W_v).reshape(B, L, self.n_heads, self.d_k).transpose(0, 2, 1, 3)
         
-        # 1. 投影产生 Q, K, V
-        q = np.dot(x, self.W_q)
-        k = np.dot(x, self.W_k)
-        v = np.dot(x, self.W_v)
-        
-        # 2. 变换形状切分多头: [B, L, H, d_k] -> [B, H, L, d_k]
-        q = q.reshape(B, L, self.n_heads, self.d_k).transpose(0, 2, 1, 3)
-        k = k.reshape(B, L, self.n_heads, self.d_k).transpose(0, 2, 1, 3)
-        v = v.reshape(B, L, self.n_heads, self.d_k).transpose(0, 2, 1, 3)
-        
-        # 3. 缩放点积注意力 [B, H, L, L]
         scores = np.matmul(q, k.transpose(0, 1, 3, 2)) / np.sqrt(self.d_k)
-        exp_s = np.exp(scores - np.max(scores, axis=-1, keepdims=True))
-        attn = exp_s / np.sum(exp_s, axis=-1, keepdims=True)
+        attn = np.exp(scores - np.max(scores, axis=-1, keepdims=True))
+        attn = attn / np.sum(attn, axis=-1, keepdims=True)
         
-        # 4. 加权输出: [B, H, L, d_k]
         out_heads = np.matmul(attn, v)
-        
-        # 5. 拼接合并回 [B, L, D]
         concat_out = out_heads.transpose(0, 2, 1, 3).reshape(B, L, self.d_model)
-        
-        # 6. 最终输出投影
-        final_output = np.dot(concat_out, self.W_o)
-        return final_output
+        return np.dot(concat_out, self.W_o)
 
 mha = MultiHeadAttention(d_model=64, n_heads=4)
-fake_input = np.random.randn(2, 8, 64)
-out = mha.forward(fake_input)
+fake_in = np.random.randn(2, 8, 64)
+out = mha.forward(fake_in)
 print("多头输出张量 Shape:", out.shape)
 </code></pre>
 

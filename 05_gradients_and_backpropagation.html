@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -330,251 +344,172 @@
     </div>
 
     
-    <h1>0.5 梯度下降与反向传播 (Gradient Descent & Backpropagation)</h1>
+    <h1>0.5 梯度下降与反向传播 (Gradients & Backpropagation)</h1>
     <div class="card">
-      <strong>本节目标：</strong>从“盲人摸象下山”直觉与控制系统误差反馈出发，理解计算图（Computational Graph）与链式法则（Chain Rule），掌握参数梯度更新的全过程。
+      <strong>本节核心认知目标：</strong><br/>
+      彻底破除对“反向传播（Backprop）”的高深恐惧，从微积分中最基础的“链式法则（Chain Rule）”出发，理解现代深度学习是如何在复杂的计算图中像流水一样反向传递梯度，并完成参数自适应更新的。
     </div>
 
-    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
-    <p>
-      我们已经有了衡量误差的测量尺（Loss $\mathcal{L}$），但大模型内部有数以亿计的权重参数 $W$。<br/>
-      <strong>我们该如何知道“每一个具体的权重参数往哪个方向微调、微调多少，才能让总 Loss 最快下降”？</strong><br/>
-      这就是<strong>梯度下降（Gradient Descent）</strong>与<strong>反向传播（Backpropagation）</strong>所要解决的核心工程任务。
-    </p>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：明斯基“多层网络不可训练”的铁幕</h3>
+      <p>
+        在 1969 年明斯基预言“多层感知机无法训练”后，整整 17 年里，所有试图训练深层网络的学者都陷入了泥潭。<br/>
+        当时人们只能用<strong>启发式随机搜索</strong>：随机微调一下第 1 个参数看 Loss 降不降，再随机调第 2 个参数……<br/>
+        当网络有成千上万个参数时，这种盲盒搜索的计算复杂度呈指数爆炸，比在整个银河系里找一颗特定的沙子还要绝望。
+      </p>
 
-    <h2>2. 梯度的物理直觉：大雾山谷中的盲人</h2>
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：微积分求导的“组合爆炸迷宫”</h3>
+      <p>
+        数学家们知道微积分能求导，但如果对每个神经元都单独写出全局偏导数解析式，公式长度会随着层数呈指数级膨胀，根本不可能写成通用代码在计算机上运行。
+      </p>
+
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：1986 年辛顿的链式法则与动态规划神技</h3>
+      <p>
+        1986 年，Geoffrey Hinton、David Rumelhart 和 Ronald Williams 在《Nature》上发表了震撼世界的论文，正式将<strong>误差反向传播（Backpropagation）</strong>推向历史舞台！<br/>
+        他们的核心洞见极其优雅：<strong>利用微积分的“链式法则（Chain Rule）”+ 计算机科学的“动态规划（记忆化搜索）”！</strong><br/>
+        无需为每个参数推导全局公式：
+        $$\frac{\partial \mathcal{L}}{\partial W_1} = \frac{\partial \mathcal{L}}{\partial Y} \times \frac{\partial Y}{\partial H} \times \frac{\partial H}{\partial W_1}$$
+        只需要从输出端（Loss）开始，<strong>从后往前反向遍历一次计算图</strong>，前一层的梯度可以直接复用后一层的计算结果！原本需要几天几夜的参数梯度计算，在单次反向遍历中瞬间完成！
+      </p>
+    </div>
+
+    <h2>2. 梯度下降的物理直觉：高维山谷滚球</h2>
     <div class="logic-box">
-      <strong>盲人下山隐喻：</strong><br/>
-      想象一个被大雾笼罩的盲人站在高山上的某个位置（当前参数状态），他无法看清山谷最低点在哪（全局最优解）。<br/>
-      但他可以用脚感受脚底四周哪个方向坡度最陡峭（<strong>梯度 $\nabla \mathcal{L}$</strong>）。沿着最陡峭方向的<strong>反方向（负梯度）</strong>迈出一步（<strong>步长/学习率 $\eta$</strong>），就能不断接近山谷底部！
+      <strong>物理心智模型：</strong><br/>
+      把损失函数 $\mathcal{L}(W)$ 想象为一片连绵起伏的山谷，参数 $W$ 是山坡上的一颗小球。<br/>
+      <strong>梯度 $\nabla \mathcal{L}$ 指向山坡上升最陡峭的方向</strong>，因此<strong>负梯度 $-\nabla \mathcal{L}$ 就是小球滚落山谷最快的方向</strong>！<br/>
+      参数更新公式（步长由学习率 $\eta$ 控制）：
+      $$W_{\text{new}} = W_{\text{old}} - \eta \cdot \frac{\partial \mathcal{L}}{\partial W}$$
     </div>
 
-    <h2>3. 黑盒 JS 可交互动画：2D 损失曲面小球滚落与学习率模拟</h2>
+    <h2>3. 黑盒 JS 可交互动画：2D 损失曲面小球滚落模拟器</h2>
     <p>
-      下方模拟了一个典型的非凸损失曲面 $f(x) = x^4 - 3x^2 + x$。<br/>
-      调节<strong>学习率 $\eta$（Learning Rate）</strong>并点击“放置小球”，观察小球是如何沿着负梯度方向滚向局部极小值的！
+      调节学习率 $\eta$（Learning Rate）与动量（Momentum），点击“开始滚落”，观察小球是如何沿着负梯度方向一步步滑向损失最低点的！
     </p>
 
     <div class="interactive-card">
-      <div class="interactive-title">🎮 梯度下降滚球模拟器</div>
+      <div class="interactive-title">🎮 梯度下降小球滚落动态模拟器</div>
       
       <div class="control-panel">
         <div class="control-group">
-          <label>学习率 $\eta$ (Learning Rate):</label>
-          <input type="range" id="lr_slider" min="0.01" max="0.35" step="0.01" value="0.08">
-          <span id="lr_val" style="font-family: Consolas; font-weight: bold; width: 40px;">0.08</span>
+          <label>学习率 $\eta$:</label>
+          <input type="range" id="lr_slider" min="0.01" max="0.2" step="0.01" value="0.05">
+          <span id="lr_disp" style="font-family: Consolas; font-weight: bold; width: 36px;">0.05</span>
         </div>
-        <button class="btn" onclick="startBall()">释放小球下山</button>
-        <button class="btn" onclick="resetBall()" style="background: #64748b;">重置位置</button>
+        <button class="btn" onclick="startDesc()">▶ 开始滚落</button>
+        <button class="btn" onclick="resetDesc()" style="background: #64748b;">重置位置</button>
       </div>
 
-      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
-        <canvas id="gradCanvas" width="500" height="320" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #fafafa;"></canvas>
-        <div style="flex: 1; min-width: 240px;">
-          <div class="logic-box" style="margin-top: 0;">
-            <strong>实时状态追踪：</strong><br/>
-            当前位置 $x$: <span id="pos_disp" style="font-family: Consolas; font-weight: bold;">-1.80</span><br/>
-            当前梯度 $\frac{df}{dx}$: <span id="grad_disp" style="font-family: Consolas; font-weight: bold;">-12.5</span><br/>
-            当前 Loss: <span id="loss_val_disp" style="font-size: 20px; font-weight: bold; color: #2563eb;">2.04</span>
-          </div>
-          <p style="font-size: 13.5px; color: #64748b;">
-            💡 <strong>实验建议</strong>：<br/>
-            1. 学习率过小（如 0.01）：下山极慢，陷入浅坑；<br/>
-            2. 学习率合适（如 0.08）：平稳滚入全局最优谷底；<br/>
-            3. 学习率过大（如 0.30）：剧烈震荡、在两侧山峰来回超调甚至发散飞出！
-          </p>
-        </div>
-      </div>
+      <canvas id="gradCanvas" width="600" height="280" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; display: block; margin: 0 auto;"></canvas>
     </div>
 
     <script>
       const gCanvas = document.getElementById('gradCanvas');
       const gCtx = gCanvas.getContext('2d');
-
-      let ballX = -1.8;
+      let ballX = -3.5;
       let animId = null;
 
-      function lossFunc(x) {
-        return 0.25 * Math.pow(x, 4) - 1.5 * Math.pow(x, 2) + 0.5 * x + 2.5;
+      function lossF(x) { return 0.2 * x * x + 0.1 * Math.sin(3 * x); }
+      function gradF(x) { return 0.4 * x + 0.3 * Math.cos(3 * x); }
+
+      function toGScreen(x, y) {
+        return {
+          sx: gCanvas.width / 2 + x * 65,
+          sy: gCanvas.height - 40 - y * 65
+        };
       }
 
-      function gradFunc(x) {
-        return Math.pow(x, 3) - 3 * x + 0.5;
-      }
-
-      function drawSurface() {
+      function drawGradScene() {
         gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
-        const originX = gCanvas.width / 2;
-        const originY = gCanvas.height - 50;
-        const scaleX = 80;
-        const scaleY = 35;
-
-        gCtx.strokeStyle = '#e2e8f0';
-        gCtx.lineWidth = 1;
-        gCtx.beginPath();
-        gCtx.moveTo(0, originY); gCtx.lineTo(gCanvas.width, originY);
-        gCtx.stroke();
 
         gCtx.strokeStyle = '#2563eb';
-        gCtx.lineWidth = 3;
+        gCtx.lineWidth = 2.5;
         gCtx.beginPath();
-        for (let px = 0; px < gCanvas.width; px++) {
-          const x = (px - originX) / scaleX;
-          const y = lossFunc(x);
-          const py = originY - y * scaleY;
-          if (px === 0) gCtx.moveTo(px, py);
-          else gCtx.lineTo(px, py);
+        for (let x = -4.5; x <= 4.5; x += 0.05) {
+          const y = lossF(x);
+          const pt = toGScreen(x, y);
+          if (x === -4.5) gCtx.moveTo(pt.sx, pt.sy); else gCtx.lineTo(pt.sx, pt.sy);
         }
         gCtx.stroke();
 
-        const curY = lossFunc(ballX);
-        const sx = originX + ballX * scaleX;
-        const sy = originY - curY * scaleY;
-
+        const bPt = toGScreen(ballX, lossF(ballX));
         gCtx.fillStyle = '#dc2626';
         gCtx.beginPath();
-        gCtx.arc(sx, sy, 8, 0, Math.PI * 2);
+        gCtx.arc(bPt.sx, bPt.sy, 8, 0, Math.PI * 2);
         gCtx.fill();
         gCtx.strokeStyle = '#0f172a';
+        gCtx.lineWidth = 1.5;
         gCtx.stroke();
-
-        const grad = gradFunc(ballX);
-        document.getElementById('pos_disp').innerText = ballX.toFixed(3);
-        document.getElementById('grad_disp').innerText = grad.toFixed(3);
-        document.getElementById('loss_val_disp').innerText = curY.toFixed(3);
       }
 
-      function stepBall() {
+      function startDesc() {
+        if (animId) clearInterval(animId);
         const lr = parseFloat(document.getElementById('lr_slider').value);
-        const grad = gradFunc(ballX);
-        ballX = ballX - lr * grad;
-        drawSurface();
+        animId = setInterval(() => {
+          const grad = gradF(ballX);
+          ballX -= lr * grad;
+          drawGradScene();
+          if (Math.abs(grad) < 0.02) clearInterval(animId);
+        }, 40);
       }
 
-      function startBall() {
+      function resetDesc() {
         if (animId) clearInterval(animId);
-        animId = setInterval(stepBall, 80);
+        ballX = -3.5;
+        drawGradScene();
       }
 
-      function resetBall() {
-        if (animId) clearInterval(animId);
-        ballX = -1.8;
-        drawSurface();
-      }
-
-      document.getElementById('lr_slider').addEventListener('input', () => {
-        document.getElementById('lr_val').innerText = parseFloat(document.getElementById('lr_slider').value).toFixed(2);
+      document.getElementById('lr_slider').addEventListener('input', (e) => {
+        document.getElementById('lr_disp').innerText = parseFloat(e.target.value).toFixed(2);
       });
-
-      drawSurface();
+      drawGradScene();
     </script>
 
-    <h2>4. 反向传播与计算图链式法则 (极小手算)</h2>
-    <div class="logic-box">
-      <strong>极简两节点手算案例：</strong><br/>
-      设前向传播链路为：$z = x \cdot w + b \longrightarrow y = \sigma(z) \longrightarrow \mathcal{L} = (y - y_{true})^2$<br/>
-      已知输入数值：$x = 2.0, w = 1.5, b = 0.5, y_{true} = 5.0$<br/><br/>
-      <strong>1. 前向计算：</strong><br/>
-      $z = 2.0 \times 1.5 + 0.5 = 3.5$<br/>
-      设激活函数 $\sigma(z) = z$（恒等映射），则 $y = 3.5$<br/>
-      总误差 $\mathcal{L} = (3.5 - 5.0)^2 = (-1.5)^2 = 2.25$<br/><br/>
-      <strong>2. 反向求导（链式回传）：</strong><br/>
-      ① 顶层梯度：$\frac{\partial \mathcal{L}}{\partial y} = 2(y - y_{true}) = 2(3.5 - 5.0) = -3.0$<br/>
-      ② 传入中间节点：$\frac{\partial \mathcal{L}}{\partial z} = \frac{\partial \mathcal{L}}{\partial y} \cdot \frac{\partial y}{\partial z} = -3.0 \times 1.0 = -3.0$<br/>
-      ③ 对权重的梯度：$\frac{\partial \mathcal{L}}{\partial w} = \frac{\partial \mathcal{L}}{\partial z} \cdot \frac{\partial z}{\partial w} = (-3.0) \times x = -3.0 \times 2.0 = -6.0$<br/>
-      ④ 对偏置的梯度：$\frac{\partial \mathcal{L}}{\partial b} = \frac{\partial \mathcal{L}}{\partial z} \cdot \frac{\partial z}{\partial b} = (-3.0) \times 1.0 = -3.0$<br/><br/>
-      <strong>3. 参数更新（设学习率 $\eta = 0.1$）：</strong><br/>
-      $w_{new} = w - \eta \cdot \frac{\partial \mathcal{L}}{\partial w} = 1.5 - 0.1 \times (-6.0) = 1.5 + 0.6 = 2.1$
-    </div>
-
-    <h2>5. Python / NumPy 纯手写两层神经网络反向传播</h2>
+    <h2>4. Python / NumPy 极简两层网络反向传播实现</h2>
     <pre><code class="language-python">import numpy as np
 
-# 1. 模拟单样本
-x = np.array([[1.0, 2.0]])   # Shape: [1, 2]
-y_true = np.array([[1.0]])   # Shape: [1, 1]
-
 np.random.seed(42)
-W1 = np.random.randn(2, 4)   # 第一层权重 [2, 4]
-b1 = np.zeros((1, 4))
-W2 = np.random.randn(4, 1)   # 第二层权重 [4, 1]
-b2 = np.zeros((1, 1))
+X = np.array([[1.0, 2.0]])   # 输入 [1, 2]
+Y_true = np.array([[1.0]])   # 目标 [1, 1]
 
-lr = 0.05
+W1 = np.random.randn(2, 4) * 0.1
+W2 = np.random.randn(4, 1) * 0.1
+lr = 0.1
 
-# 前向传播
-z1 = np.dot(x, W1) + b1
-a1 = np.maximum(0, z1)
-z2 = np.dot(a1, W2) + b2
-y_pred = z2
+# 1. 前向传播 (Forward)
+H = np.maximum(0, np.dot(X, W1))     # ReLU 隐藏层 [1, 4]
+Y_pred = np.dot(H, W2)                # 输出 [1, 1]
+loss = 0.5 * (Y_pred - Y_true) ** 2  # MSE Loss
 
-loss = 0.5 * np.sum((y_pred - y_true) ** 2)
-print(f"训练前 Loss: {loss:.4f}")
+# 2. 反向传播 (Backward: 链式法则逆向流转)
+d_loss = Y_pred - Y_true             # dL/dY
+d_W2 = np.dot(H.T, d_loss)           # dL/dW2 = H^T * dL/dY
 
-# 反向传播
-dL_dz2 = y_pred - y_true
-dL_dW2 = np.dot(a1.T, dL_dz2)
-dL_db2 = dL_dz2
+d_H = np.dot(d_loss, W2.T)           # dL/dH = dL/dY * W2^T
+d_Z1 = d_H * (H > 0)                 # ReLU 导数截断
+d_W1 = np.dot(X.T, d_Z1)             # dL/dW1 = X^T * dL/dZ1
 
-dL_da1 = np.dot(dL_dz2, W2.T)
-dL_dz1 = dL_da1 * (z1 > 0)
+# 3. 梯度更新 (Step)
+W1 -= lr * d_W1
+W2 -= lr * d_W2
 
-dL_dW1 = np.dot(x.T, dL_dz1)
-dL_db1 = dL_dz1
-
-# 梯度更新
-W1 -= lr * dL_dW1
-b1 -= lr * dL_db1
-W2 -= lr * dL_dW2
-b2 -= lr * dL_db2
-
-new_z1 = np.dot(x, W1) + b1
-new_a1 = np.maximum(0, new_z1)
-new_pred = np.dot(new_a1, W2) + b2
-new_loss = 0.5 * np.sum((new_pred - y_true) ** 2)
-print(f"执行一步梯度下降后 Loss: {new_loss:.4f}")
+print("初始 Loss:", round(float(loss), 5))
+print("更新后 W1 梯度的模长:", round(float(np.linalg.norm(d_W1)), 4))
 </code></pre>
 
-    <h2>6. 优化器进阶：从 SGD 到现代大模型标配 AdamW</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>优化器</th>
-          <th>核心改进思想</th>
-          <th>物理直觉</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>SGD</strong></td>
-          <td>直接按负梯度走固定步长</td>
-          <td>没有惯性，遇到平坦或鞍点极易卡住</td>
-        </tr>
-        <tr>
-          <td><strong>Momentum</strong></td>
-          <td>引入一阶动量 $v_t = \beta v_{t-1} + (1-\beta)g_t$</td>
-          <td>带质量的重球，具有惯性，可冲过局部鞍点</td>
-        </tr>
-        <tr>
-          <td><strong>AdamW</strong></td>
-          <td>一阶动量（方向）+ 二阶动量（自适应步长）+ 解耦权重衰减</td>
-          <td><strong>现代 LLM（GPT/LLaMA）训练标准</strong></td>
-        </tr>
-      </tbody>
-    </table>
-
-    <h2>7. 打开黑盒：真实工程细节 (Autograd 与显存开销)</h2>
+    <h2>5. 打开黑盒：真实工程细节 (AdamW 优化器统治大模型)</h2>
     <div class="card">
-      <strong>为什么模型训练需要的显存是纯推理的 3~4 倍？</strong><br/>
-      从上述 Python 代码可见：为了在反向传播中计算 <code>dL_dW1 = np.dot(x.T, dL_dz1)</code>，<strong>前向传播过程中的全部中间激活值（$x, a_1$ 等）必须一直保存在 GPU 显存中，直到反向传播完成！</strong><br/>
-      这就是为什么在大模型长上下文训练中，需要使用 <strong>Activation Checkpointing（激活重计算）</strong> 技术——用多算一次前向的时间换取大量的宝贵显存空间。
+      <strong>为什么大模型一律采用 AdamW 优化器？</strong><br/>
+      朴素 SGD 容易在狭窄的山谷地形中产生剧烈振荡。<br/>
+      <strong>AdamW（自适应矩估计 + 解耦权重衰减）</strong>通过为每个参数维护一阶动量（历史平均运动方向）和二阶动量（历史方差自适应缩放学习率），实现了对稀疏特征和病态曲面的超强自适应收敛能力！
     </div>
 
-    <h2>8. 动手实验与思考题</h2>
+    <h2>6. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：</strong><br/>
-      若某个神经元的输入权重很大，导致该神经元输出落入 Sigmoid 的极大饱和区（$z=10.0$），其导数 $\sigma'(z) \approx 0$。<br/>
-      此时通过链式法则回传到该神经元前面所有层参数的梯度会发生什么？为什么这被称为“神经元坏死”？
+      如果在训练过程中，学习率 $\eta$ 设置得过大（例如设为 10.0），小球会发生什么现象？<br/>
+      <em>提示：小球会在山谷两侧剧烈来回弹跳，甚至直接被甩出山谷，造成 Loss 彻底发散（NaN）！这正是现代大模型训练需要精细调度 Learning Rate Warmup & Cosine Decay 的根本原因。</em>
     </div>
 
 

@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -332,56 +346,55 @@
     
     <h1>4.5 模型量化与边缘部署 (Quantization & Edge Deployment)</h1>
     <div class="card">
-      <strong>本节目标：</strong>从嵌入式定点数（Fixed-point）与 DSP 算力优化视角，掌握 FP32 $\to$ FP16 $\to$ INT8 / INT4 模型量化的数学映射公式，理解 Weight-Only 量化与 MCU/NPU 边缘端硬件加速。
+      <strong>本节核心认知目标：</strong><br/>
+      从嵌入式定点数（Fixed-point）与 DSP 算力优化视角，掌握 FP32 $\to$ FP16 $\to$ INT8 / INT4 模型量化的数学映射公式，理解 Weight-Only 量化与 MCU/NPU 边缘端硬件加速。
     </div>
 
-    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
-    <p>
-      一个标准的 70B 参数大模型以 FP16（16 位浮点，每参数 2 字节）存储时，<strong>仅权重就需要 $70 \times 2 = 140\text{ GB}$ 显存</strong>，至少需要 2 张昂贵的 A100/H100 80GB 专业计算卡。<br/>
-      但在很多工业边缘端（车载 MCU、嵌入式 Linux 板卡、高通 NPU 手机芯片）上，内存往往只有 8GB~16GB。<br/>
-      <strong>模型量化（Quantization）：通过定点映射，将每个 16 位浮点数压缩为 8 位或 4 位整数（INT8 / INT4），直接将显存需求缩减为原来的 $\frac{1}{2} \sim \frac{1}{4}$，并极大提升定点 MAC 计算吞吐！</strong>
-    </p>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：百亿参数模型的“显存吞噬兽”</h3>
+      <p>
+        一个标准的 70B 参数大模型以 FP16（每参数 2 字节）存储时，<strong>仅权重就需要 $70 \times 2 = 140\text{ GB}$ 显存</strong>，必须使用 2 张昂贵的顶级数据中心计算卡。
+      </p>
 
-    <h2>2. 定点量化与反量化核心数学映射</h2>
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：边缘设备的硬件贫瘠与全量粗暴量化的“智力崩溃”</h3>
+      <p>
+        然而，在边缘端（车载 MCU、嵌入式 Linux 板卡、高通 NPU 手机芯片）上，内存往往只有 8GB~16GB。<br/>
+        早期人们尝试将所有权重简单粗暴地按比例缩放到 INT4（仅 16 个定点阶梯），结果发现<strong>模型输出瞬间完全乱码，智力严重崩溃</strong>！
+      </p>
+
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：2023 年韩松团队与 AWQ（激活感知权重量化）</h3>
+      <p>
+        2023 年，MIT <strong>韩松（Song Han）</strong>团队发表了震撼业界的 <strong>AWQ（Activation-aware Weight Quantization）</strong>：<br/>
+        他们敏锐地发现了一个根本规律：<strong>在数十亿个权重中，只有约 1% 的关键权重（Salient Weights / Outliers）决定了模型的智商！</strong><br/>
+        通过重点保护这 1% 的关键通道不被剧烈舍入，将其余 99% 的普通权重激进压缩到 INT4，实现了<strong>体积缩小 4 倍、显存带宽需求暴降 75%，而模型准确率几乎零损失</strong>的惊人工程奇迹！
+      </p>
+    </div>
+
+    <h2>2. 定点量化与反量化核心公式</h2>
     <div class="logic-box">
-      <strong>对称定点量化（Symmetric Quantization）公式：</strong><br/>
-      1. <strong>量化 Scale 比例因子</strong>：
-      $$S = \frac{\max(|X|)}{q_{max}} \quad (\text{INT8 时 } q_{max}=127)$$
-      2. <strong>浮点 $\to$ 定点量化</strong>：
-      $$Q = \text{clip}\left( \text{round}\left(\frac{X}{S}\right), -q_{max}, q_{max} \right) \in \text{INT8}$$
-      3. <strong>定点 $\to$ 浮点反量化（Dequantization）</strong>：
-      $$\hat{X} = Q \times S \approx X$$
+      $$S = \frac{\max(|X|)}{q_{max}} \quad (\text{INT8 时 } q_{max}=127), \quad Q = \text{clip}\left( \text{round}\left(\frac{X}{S}\right), -q_{max}, q_{max} \right)$$
+      $$\text{反量化恢复：} \hat{X} = Q \times S \approx X$$
     </div>
 
-    <h2>3. 黑盒 JS 可交互动画：INT8 / INT4 量化精度与舍入误差对比仪</h2>
-    <p>
-      拖动下方滑块输入任意浮点权重数值，对比 INT8（256 个量化阶梯）与 INT4（仅 16 个量化阶梯）的舍入误差与反量化逼近效果！
-    </p>
-
+    <h2>3. 黑盒 JS 可交互动画：INT8 / INT4 量化精度对比仪</h2>
     <div class="interactive-card">
       <div class="interactive-title">🎮 定点量化阶梯与舍入误差测试台</div>
       
       <div class="control-panel">
-        <div class="control-group">
-          <label>原始浮点权重 $x$:</label>
-          <input type="range" id="fp_input" min="-3.0" max="3.0" step="0.05" value="1.42">
-          <span id="fp_disp" style="font-family: Consolas; font-weight: bold; width: 44px;">1.42</span>
-        </div>
+        <label>输入浮点权重 $x$:</label>
+        <input type="range" id="fp_input" min="-3.0" max="3.0" step="0.05" value="1.42">
+        <span id="fp_disp" style="font-family: Consolas; font-weight: bold; width: 44px;">1.42</span>
       </div>
 
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
-        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px;">
-          <strong style="color: #2563eb; font-size: 15px;">1. INT8 量化 (256 阶梯, 节省 50% 内存)</strong><br/><br/>
-          定点整数值: <code id="int8_val" style="font-size: 14px;">60</code><br/>
-          反量化还原值: <span id="int8_dequant" style="font-family: Consolas; font-weight: bold;">1.417</span><br/>
-          舍入绝对误差: <span id="int8_err" style="color: #166534; font-weight: bold;">0.003 (极高保真度)</span>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px;">
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px;">
+          <strong style="color: #2563eb;">INT8 量化 (256 阶梯)</strong><br/>
+          定点整数: <code id="int8_val">60</code> | 还原值: <span id="int8_dequant" style="font-family: Consolas; font-weight: bold;">1.417</span>
         </div>
-
-        <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 14px;">
-          <strong style="color: #c2410c; font-size: 15px;">2. INT4 量化 (16 阶梯, 节省 75% 内存)</strong><br/><br/>
-          定点整数值: <code id="int4_val" style="font-size: 14px;">4</code><br/>
-          反量化还原值: <span id="int4_dequant" style="font-family: Consolas; font-weight: bold;">1.500</span><br/>
-          舍入绝对误差: <span id="int4_err" style="color: #dc2626; font-weight: bold;">0.080 (存在轻微量化噪声)</span>
+        <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 12px;">
+          <strong style="color: #c2410c;">INT4 量化 (16 阶梯)</strong><br/>
+          定点整数: <code id="int4_val">4</code> | 还原值: <span id="int4_dequant" style="font-family: Consolas; font-weight: bold;">1.500</span>
         </div>
       </div>
     </div>
@@ -394,57 +407,19 @@
 
         const s8 = maxVal / 127.0;
         const q8 = Math.max(-127, Math.min(127, Math.round(x / s8)));
-        const deq8 = q8 * s8;
-        const err8 = Math.abs(x - deq8);
-
         document.getElementById('int8_val').innerText = q8;
-        document.getElementById('int8_dequant').innerText = deq8.toFixed(3);
-        document.getElementById('int8_err').innerText = `${err8.toFixed(4)} (高精度)`;
+        document.getElementById('int8_dequant').innerText = (q8 * s8).toFixed(3);
 
         const s4 = maxVal / 7.0;
         const q4 = Math.max(-7, Math.min(7, Math.round(x / s4)));
-        const deq4 = q4 * s4;
-        const err4 = Math.abs(x - deq4);
-
         document.getElementById('int4_val').innerText = q4;
-        document.getElementById('int4_dequant').innerText = deq4.toFixed(3);
-        document.getElementById('int4_err').innerText = `${err4.toFixed(4)}`;
+        document.getElementById('int4_dequant').innerText = (q4 * s4).toFixed(3);
       }
-
       document.getElementById('fp_input').addEventListener('input', updateQuant);
       updateQuant();
     </script>
 
-    <h2>4. Python / NumPy 极简 INT8 量化与反量化实现</h2>
-    <pre><code class="language-python">import numpy as np
-
-def quantize_int8(tensor: np.ndarray):
-    max_val = np.max(np.abs(tensor))
-    scale = max_val / 127.0
-    
-    q_tensor = np.clip(np.round(tensor / scale), -127, 127).astype(np.int8)
-    return q_tensor, float(scale)
-
-def dequantize_int8(q_tensor: np.ndarray, scale: float) -> np.ndarray:
-    return q_tensor.astype(np.float32) * scale
-
-weights_fp32 = np.random.randn(4, 4).astype(np.float32)
-q_weights, scale = quantize_int8(weights_fp32)
-recovered_weights = dequantize_int8(q_weights, scale)
-
-print("原始 FP32 权重 (第一行):\n", weights_fp32[0])
-print("量化 INT8 权重 (第一行):\n", q_weights[0])
-print("反量化还原权重 (第一行):\n", np.round(recovered_weights[0], 4))
-</code></pre>
-
-    <h2>5. 打开黑盒：真实工程细节 (AWQ / GPTQ 与边缘 NPU)</h2>
-    <div class="card">
-      <strong>为什么 INT4 精度几乎不掉点（AWQ 核心思想）？</strong><br/>
-      研究发现，神经网络中只有约 <strong>1% 的关键权重（Salient Weights / Outliers）</strong> 对输出质量起决定性作用。<br/>
-      现代工业级量化算法（<strong>AWQ / GPTQ</strong>）通过保护这 1% 的关键权重不被剧烈舍入，将其余 99% 的普通权重激进压缩到 INT4，实现了在 70B 模型上“体积缩小 4 倍而准确率近乎零损失”的工程奇迹！
-    </div>
-
-    <h2>6. 动手实验与思考题</h2>
+    <h2>4. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：</strong><br/>
       恭喜你完成了全书全部 21 篇交互式核心知识体系的探索！<br/>

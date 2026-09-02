@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -332,32 +346,38 @@
     
     <h1>3.2 Causal Mask 因果掩码 (Causal Masking)</h1>
     <div class="card">
-      <strong>本节目标：</strong>理解为什么 Decoder-Only 大模型在生成文本时“绝对不能偷看未来”，掌握上三角 $-\infty$ 掩码矩阵的构建原理与 Softmax 归零机制。
+      <strong>本节核心认知目标：</strong><br/>
+      理解为什么自回归大模型在生成文本时“绝对不能偷看未来”，掌握上三角 $-\infty$ 掩码矩阵的构建原理与 Softmax 归零机制。
     </div>
 
-    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
-    <p>
-      现代主流大模型（GPT-4、LLaMA-3、Qwen-2.5）全部属于 **Decoder-Only 自回归架构**。<br/>
-      自回归生成的本质是：<strong>根据已经生成的历史单词 $[x_1, x_2, \dots, x_t]$，预测下一个单词 $x_{t+1}$</strong>。<br/>
-      在模型训练阶段，整句话是一次性并行输入进 GPU 的。如果不做任何约束，第 $t$ 个词就能在注意力矩阵中“偷看”到第 $t+1$ 个词的真实答案！<br/>
-      <span class="mark-danger">后果：模型会走捷径死记硬背答案，在真实推理生成时彻底瘫痪！</span>
-    </p>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：2018 年 BERT 的双向狂欢</h3>
+      <p>
+        2018 年，Google 推出 BERT 模型，采用双向 Encoder 架构：每个词都可以同时看到上下文的所有词，并在填空题（Masked LM）任务上横扫各大榜单，双向注意力被视为王道。
+      </p>
+
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：双向模型在生成任务上的“作弊瘫痪”</h3>
+      <p>
+        然而，当人们试图用双向模型写小说、写代码时，遇到了根本性的逻辑死锁：<br/>
+        在生成第 $t$ 个词时，后面的词根本还没有诞生！如果训练时允许模型双向看全句，模型就会走捷径“偷看答案”，在真实推理时面对未知未来彻底崩溃。
+      </p>
+
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：OpenAI GPT 的 Decoder-Only 孤勇者之路与因果掩码</h3>
+      <p>
+        在全行业追捧 BERT 双向架构时，OpenAI 的 <strong>Alec Radford</strong> 等人坚守 <strong>Decoder-Only 架构</strong>：<br/>
+        他们使用极其优雅的<strong>下三角因果掩码（Causal Mask）</strong>——在训练并行计算矩阵乘的同时，强行将未来词的注意力打分置为 $-\infty$（经过 Softmax 后权重精确归零）！<br/>
+        这一设计完美统一了<strong>“训练时的全矩阵极速并行”</strong>与<strong>“生成时的严格单向因果”</strong>，最终造就了 ChatGPT 与当今大模型的统一天下！
+      </p>
+    </div>
 
     <h2>2. 数学构造：上三角 $-\infty$ 掩码矩阵</h2>
-    <p>
-      为了在并行计算的同时彻底阻断“未来信息泄漏”，我们在注意力打分矩阵 $S = \frac{QK^T}{\sqrt{d_k}}$ 上直接叠加一个<strong>下三角因果掩码矩阵 $M$</strong>：
-      $$M_{ij} = \begin{cases} 0, & i \ge j \quad (\text{当前与历史 Token，允许交互}) \\ -\infty, & i < j \quad (\text{未来 Token，严格屏蔽}) \end{cases}$$
-    </p>
-    <p>
-      叠加后送入 Softmax：
-      $$\text{softmax}(S + M)_{ij} = \frac{e^{S_{ij} + M_{ij}}}{\sum_k e^{S_{ik} + M_{ik}}} \implies \text{当 } i < j \text{ 时，} e^{-\infty} = 0 \quad (\text{权重精确为 } 0.000)$$
-    </p>
+    <div class="logic-box">
+      $$M_{ij} = \begin{cases} 0, & i \ge j \quad (\text{允许查看历史}) \\ -\infty, & i < j \quad (\text{严格屏蔽未来}) \end{cases}$$
+      $$\text{softmax}(S + M)_{ij} \implies \text{当 } i < j \text{ 时，} e^{-\infty} = 0 \quad (\text{权重精确为 } 0.000)$$
+    </div>
 
-    <h2>3. 黑盒 JS 可交互动画：因果 Mask 开关矩阵</h2>
-    <p>
-      点击下方按钮切换因果掩码状态，直观观察注意力矩阵的未来视野遮罩效果！
-    </p>
-
+    <h2>3. 黑盒 JS 可交互动画：因果 Mask 遮罩矩阵</h2>
     <div class="interactive-card">
       <div class="interactive-title">🎮 Causal Mask 矩阵遮罩探索器</div>
       
@@ -371,10 +391,7 @@
         <div style="flex: 1; min-width: 240px;">
           <div class="logic-box" style="margin-top: 0;">
             <strong>当前注意力模式：</strong><br/>
-            <span id="mask_mode_disp" style="font-weight: bold; color: #2563eb;">Decoder 因果单向注意 (Causal Mask ON)</span><br/><br/>
-            <strong>矩阵解释：</strong><br/>
-            <span style="color: #166534; font-weight: bold;">绿色方块 (0.0)</span>：允许查看自身及历史 Token<br/>
-            <span style="color: #dc2626; font-weight: bold;">红色方块 (-∞)</span>：未来 Token，Softmax 后权重为 0%
+            <span id="mask_mode_disp" style="font-weight: bold; color: #2563eb;">Decoder 因果单向注意 (Causal Mask ON)</span>
           </div>
         </div>
       </div>
@@ -382,44 +399,29 @@
 
     <script>
       const grid = document.getElementById('mask_grid');
-      const tokens4 = ["I", "love", "deep", "learning"];
-
       function renderMaskGrid(isCausal) {
         grid.innerHTML = '';
-        document.getElementById('mask_mode_disp').innerText = isCausal 
-          ? "Decoder 因果单向注意 (Causal Mask ON)" 
-          : "Encoder 全局双向注意 (Full Attention)";
+        document.getElementById('mask_mode_disp').innerText = isCausal ? "Decoder 因果单向注意 (Causal Mask ON)" : "Encoder 全局双向注意 (Full Attention)";
         document.getElementById('mask_mode_disp').style.color = isCausal ? "#2563eb" : "#64748b";
 
         for (let r = 0; r < 4; r++) {
           for (let c = 0; c < 4; c++) {
             const cell = document.createElement('div');
-            cell.style.width = '56px';
-            cell.style.height = '42px';
-            cell.style.display = 'flex';
-            cell.style.alignItems = 'center';
-            cell.style.justifyContent = 'center';
-            cell.style.borderRadius = '4px';
-            cell.style.fontFamily = 'Consolas, monospace';
-            cell.style.fontSize = '12px';
-            cell.style.fontWeight = 'bold';
+            cell.style.width = '56px'; cell.style.height = '42px';
+            cell.style.display = 'flex'; cell.style.alignItems = 'center'; cell.style.justifyContent = 'center';
+            cell.style.borderRadius = '4px'; cell.style.fontFamily = 'Consolas'; cell.style.fontSize = '12px'; cell.style.fontWeight = 'bold';
 
             if (isCausal && c > r) {
-              cell.style.background = '#fee2e2';
-              cell.style.color = '#dc2626';
-              cell.style.border = '1px solid #fca5a5';
+              cell.style.background = '#fee2e2'; cell.style.color = '#dc2626'; cell.style.border = '1px solid #fca5a5';
               cell.innerText = '-inf';
             } else {
-              cell.style.background = '#dcfce7';
-              cell.style.color = '#166534';
-              cell.style.border = '1px solid #86efac';
+              cell.style.background = '#dcfce7'; cell.style.color = '#166534'; cell.style.border = '1px solid #86efac';
               cell.innerText = '0.0';
             }
             grid.appendChild(cell);
           }
         }
       }
-
       function toggleMask(on) { renderMaskGrid(on); }
       renderMaskGrid(true);
     </script>
@@ -429,28 +431,20 @@
 
 def apply_causal_mask(scores: np.ndarray) -> np.ndarray:
     seq_len = scores.shape[-1]
-    
-    # 1. 构造上三角为 True 的布尔矩阵
     mask = np.triu(np.ones((seq_len, seq_len), dtype=bool), k=1)
-    
-    # 2. 将未来位置填充为 -inf
     masked_scores = np.where(mask, -1e9, scores)
-    
-    # 3. Softmax 归一化
     exp_s = np.exp(masked_scores - np.max(masked_scores, axis=-1, keepdims=True))
-    attn_weights = exp_s / np.sum(exp_s, axis=-1, keepdims=True)
-    return attn_weights
+    return exp_s / np.sum(exp_s, axis=-1, keepdims=True)
 
 raw_scores = np.ones((4, 4)) * 2.0
-masked_attn = apply_causal_mask(raw_scores)
-print("应用因果掩码后的注意力权重矩阵 A:\n", np.round(masked_attn, 3))
+print("掩码后注意力权重 A:\n", np.round(apply_causal_mask(raw_scores), 3))
 </code></pre>
 
     <h2>5. 打开黑盒：真实工程细节 (FlashAttention 硬件因果剔除)</h2>
     <div class="card">
       <strong>算力翻倍福利：</strong><br/>
-      在因果掩码下，整个 $L \times L$ 注意力矩阵的上半部分（右上角）是完全不需要参与实际计算的！<br/>
-      FlashAttention 在 CUDA 底层直接<strong>跳过了上三角全部 Tile 矩阵块的加载与计算</strong>，使得 Decoder-Only 架构的前向注意力计算速度直接提升了整整一倍！
+      在因果掩码下，整个 $L \times L$ 注意力矩阵的上半部分完全不需要参与实际计算。<br/>
+      FlashAttention 在 CUDA 底层直接<strong>跳过了上三角全部 Tile 矩阵块的加载与计算</strong>，使前向注意力计算速度直接翻倍！
     </div>
 
     <h2>6. 动手实验与思考题</h2>

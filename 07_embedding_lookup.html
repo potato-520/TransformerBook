@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -330,228 +344,189 @@
     </div>
 
     
-    <h1>1.2 Embedding 嵌入层与语义空间 (Embedding Layer & Vector Space)</h1>
+    <h1>1.2 Embedding 嵌入层与语义空间 (Embedding Lookup & Semantic Vectors)</h1>
     <div class="card">
-      <strong>本节目标：</strong>破除 Embedding 的高深神秘感，从嵌入式查表（Lookup Table / RAM 读取）视角理解其本质，掌握高维密集向量的几何加减与余弦相似度度量。
+      <strong>本节核心认知目标：</strong><br/>
+      理解离散整数 Token ID 如何通过查表操作转化为连续高维几何向量，从硬件角度透视 Embedding 的 <code>memcpy</code> 查表本质，掌握词向量空间中余弦相似度与神奇的“向量代数运算”。
     </div>
 
-    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
-    <p>
-      Token ID 只是一个孤立的整数编号（例如 <code>apple=1024</code>，<code>orange=1025</code>）。<br/>
-      在离散的整数之间，加减乘除毫无数学意义（例如 $1024 + 1 = 1025$ 并不代表苹果加上 1 变成橙子）。<br/>
-      <strong>Embedding 嵌入层</strong>的作用，就是为每个 Token 赋予一个高维度的稠密浮点向量（如 4096 维），<strong>让语义相近的词在高维几何空间中靠得更近</strong>。
-    </p>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：One-Hot 独热编码的孤岛世界</h3>
+      <p>
+        在词向量出现之前，计算机表示一个词只能使用 <strong>One-Hot 独热编码</strong>：<br/>
+        若词表有 50,000 个词，每个词就表示为一个 50,000 维的极长稀疏向量，只有属于自己的那个位置是 1，其余全为 0：
+        $$\text{"apple"} = [1, 0, 0, \dots, 0], \quad \text{"banana"} = [0, 1, 0, \dots, 0], \quad \text{"truck"} = [0, 0, 1, \dots, 0]$$
+      </p>
 
-    <h2>2. 输入与输出 Tensor Shape (查表本质)</h2>
-    <ul>
-      <li><strong>输入 Token ID 矩阵 $X$</strong>：<span class="shape-badge">Shape: [B, L]</span>（整数索引，数据类型 <code>int64</code>）。</li>
-      <li><strong>Embedding 权重查找表 $E$</strong>：<span class="shape-badge">Shape: [V, D_{model}]</span>（$V$ 是词表大小，$D_{model}$ 是特征维度）。</li>
-      <li><strong>输出张量 $H$</strong>：<span class="shape-badge">Shape: [B, L, D_{model}]</span>（浮点数张量，<code>float32 / bfloat16</code>）。</li>
-    </ul>
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：维度灾难与语义正交断层</h3>
+      <p>
+        One-Hot 存在致命的物理缺陷：<br/>
+        1. <strong>显存极其浪费</strong>：存放一个句子需要大量的稀疏零阵；<br/>
+        2. <strong>语义完全正交</strong>：任意两个词向量的点积均为 0（$\vec{v}_{\text{apple}} \cdot \vec{v}_{\text{banana}} = 0$）。在计算机眼里，“苹果”和“香蕉”的关系，和“苹果”与“重型卡车”的关系没有任何区别！算法无法从语料中迁移任何同义词知识。
+      </p>
 
-    <h2>3. 几何物理直觉：高维空间中的语义加减法</h2>
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：2013 年米科洛夫（Mikolov）与 Word2Vec 奇迹</h3>
+      <p>
+        2013 年，Google 青年学者<strong>托马什·米科洛夫（Tomas Mikolov）</strong>提出了划时代的 <strong>Word2Vec</strong>！<br/>
+        他践行了语言学大师 J.R. Firth 的名言：<em>“观其伴而知其意（You shall know a word by the company it keeps）”</em>——通过让神经网络根据上下文预测中心词，将 50,000 维的离散稀疏符号<strong>压缩投影到 4096 维的连续稠密欧几里得空间</strong>中。<br/>
+        当人们把训练好的词向量可视化时，整个学术界被深深震撼了：语义相近的词在空间中紧密聚类，甚至自然涌现出神奇的几何平移代数关系：
+        $$\vec{v}_{\text{King}} - \vec{v}_{\text{Man}} + \vec{v}_{\text{Woman}} \approx \vec{v}_{\text{Queen}}$$
+        人类语言的“意义”，第一次在纯粹的几何向量空间中获得了数学实体！
+      </p>
+    </div>
+
+    <h2>2. Embedding Lookup 的硬件底层真相：指针查表 (RAM Access)</h2>
     <div class="logic-box">
-      <strong>著名的向量算术奇迹：</strong><br/>
-      $$\vec{v}(\text{"King"}) - \vec{v}(\text{"Man"}) + \vec{v}(\text{"Woman"}) \approx \vec{v}(\text{"Queen"})$$
-      在训练良好的 Embedding 空间中，特定方向的平移向量代表了明确的语义属性（例如“性别向量”、“时态向量”、“资本与国家关系向量”）。
+      <strong>工程师视角去除高深神秘感：</strong><br/>
+      所谓 Embedding 层，其本质就是一块**连续存放的大数组（权重矩阵 $W_E \in \mathbb{R}^{V \times D}$）**！<br/>
+      给定一个 Token ID（例如 $id = 42$），前向传播<strong>根本不需要做昂贵的矩阵乘法</strong>，它在底层仅仅是一次极速的<strong>指针偏移内存拷贝（memcpy）</strong>：
+      $$\text{Token Vector} = W_E[42, :] = *(W_E + 42 \times D \times \text{sizeof(float)})$$
     </div>
 
-    <h2>4. 黑盒 JS 可交互动画：2D 语义向量投影仪</h2>
+    <h2>3. 黑盒 JS 可交互动画：2D 语义向量投影与余弦相似度探测</h2>
     <p>
-      下方将 8 个经典词汇的语义向量投影在 2D 平面上。<br/>
-      点击“计算余弦相似度”或拖动词汇观察它们在向量空间中的距离与夹角！
+      在下方 2D 语义空间中点击不同词汇，观察它们与其它词汇的夹角与<strong>余弦相似度（Cosine Similarity: $\frac{\vec{u} \cdot \vec{v}}{\|\vec{u}\|\|\vec{v}\|}$）</strong>！
     </p>
 
     <div class="interactive-card">
-      <div class="interactive-title">🎮 2D 语义向量空间分布与相似度探测</div>
+      <div class="interactive-title">🎮 2D 词向量几何语义空间探测器</div>
       
-      <div class="control-panel">
-        <div class="control-group">
-          <label>选择词汇 A:</label>
-          <select id="word_a" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 600;">
-            <option value="King">King (国王)</option>
-            <option value="Queen">Queen (王后)</option>
-            <option value="Man">Man (男人)</option>
-            <option value="Woman">Woman (女人)</option>
-            <option value="Apple">Apple (苹果)</option>
-            <option value="Orange">Orange (橙子)</option>
-          </select>
-        </div>
-        <div class="control-group">
-          <label>选择词汇 B:</label>
-          <select id="word_b" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 600;">
-            <option value="Queen">Queen (王后)</option>
-            <option value="King">King (国王)</option>
-            <option value="Woman">Woman (女人)</option>
-            <option value="Orange">Orange (橙子)</option>
-            <option value="Apple">Apple (苹果)</option>
-          </select>
-        </div>
-      </div>
-
       <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
-        <canvas id="embCanvas" width="500" height="340" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #fafafa;"></canvas>
+        <canvas id="embCanvas" width="460" height="300" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #fafafa;"></canvas>
         <div style="flex: 1; min-width: 240px;">
           <div class="logic-box" style="margin-top: 0;">
-            <strong>余弦相似度公式：</strong><br/>
-            $$\cos(\theta) = \frac{\vec{A} \cdot \vec{B}}{\|\vec{A}\| \|\vec{B}\|}$$
-            <strong>测量结果：</strong><br/>
-            夹角 $\theta$: <span id="angle_disp" style="font-weight: bold; color: #2563eb;">18.5°</span><br/>
-            相似度 $\cos(\theta)$: <span id="sim_disp" style="font-size: 22px; font-weight: 800; color: #166534;">0.948</span>
+            <strong>当前探测基准词：</strong><br/>
+            <span id="cur_emb_word" style="font-size: 18px; font-weight: bold; color: #2563eb;">apple</span><br/><br/>
+            <strong>与其他词的余弦相似度：</strong>
+            <div id="sim_list" style="font-family: Consolas; font-size: 13px; line-height: 1.8; margin-top: 6px;"></div>
           </div>
-          <p style="font-size: 13.5px; color: #64748b;">
-            💡 <strong>工程经验</strong>：在 RAG（检索增强生成）与向量数据库（Milvus / Qdrant）中，余弦相似度是最常用的文本相似度检索标准。
-          </p>
         </div>
       </div>
     </div>
 
     <script>
-      const eCanvas = document.getElementById('embCanvas');
-      const eCtx = eCanvas.getContext('2d');
+      const embCanvas = document.getElementById('embCanvas');
+      const embCtx = embCanvas.getContext('2d');
+      const eMidX = embCanvas.width / 2;
+      const eMidY = embCanvas.height / 2;
 
-      const wordVectors = {
-        "King": {x: 2.2, y: 3.5, color: "#2563eb"},
-        "Queen": {x: 2.0, y: 3.2, color: "#9333ea"},
-        "Man": {x: 3.2, y: 1.8, color: "#0284c7"},
-        "Woman": {x: 3.0, y: 1.5, color: "#ec4899"},
-        "Apple": {x: -2.8, y: -1.5, color: "#dc2626"},
-        "Orange": {x: -2.5, y: -1.8, color: "#ea580c"},
-        "Cat": {x: -1.0, y: 2.5, color: "#16a34a"},
-        "Dog": {x: -0.8, y: 2.2, color: "#65a30d"}
-      };
+      const wordVectors = [
+        {name: "apple", x: 2.5, y: 2.0, cat: "fruit"},
+        {name: "banana", x: 2.8, y: 1.6, cat: "fruit"},
+        {name: "orange", x: 2.2, y: 2.4, cat: "fruit"},
+        {name: "car", x: -2.5, y: 1.8, cat: "vehicle"},
+        {name: "truck", x: -2.8, y: 1.4, cat: "vehicle"},
+        {name: "cat", x: 0.5, y: -2.5, cat: "animal"},
+        {name: "dog", x: 0.8, y: -2.3, cat: "animal"},
+      ];
+      let selectedWord = "apple";
 
-      function drawEmbedding() {
-        eCtx.clearRect(0, 0, eCanvas.width, eCanvas.height);
-        const originX = eCanvas.width / 2;
-        const originY = eCanvas.height / 2;
-        const scale = 40;
+      function drawEmbSpace() {
+        embCtx.clearRect(0, 0, embCanvas.width, embCanvas.height);
 
-        // 绘制坐标轴
-        eCtx.strokeStyle = '#e2e8f0';
-        eCtx.lineWidth = 1;
-        eCtx.beginPath();
-        eCtx.moveTo(0, originY); eCtx.lineTo(eCanvas.width, originY);
-        eCtx.moveTo(originX, 0); eCtx.lineTo(originX, eCanvas.height);
-        eCtx.stroke();
+        // 坐标轴
+        embCtx.strokeStyle = '#e2e8f0';
+        embCtx.lineWidth = 1;
+        embCtx.beginPath();
+        embCtx.moveTo(0, eMidY); embCtx.lineTo(embCanvas.width, eMidY);
+        embCtx.moveTo(eMidX, 0); embCtx.lineTo(eMidX, embCanvas.height);
+        embCtx.stroke();
 
-        // 绘制所有点
-        for (const [w, pos] of Object.entries(wordVectors)) {
-          const sx = originX + pos.x * scale;
-          const sy = originY - pos.y * scale;
+        const baseVec = wordVectors.find(w => w.name === selectedWord);
 
-          eCtx.fillStyle = pos.color;
-          eCtx.beginPath();
-          eCtx.arc(sx, sy, 6, 0, Math.PI * 2);
-          eCtx.fill();
+        wordVectors.forEach(w => {
+          const px = eMidX + w.x * 55;
+          const py = eMidY - w.y * 50;
 
-          eCtx.font = 'bold 12px Segoe UI, sans-serif';
-          eCtx.fillText(w, sx + 8, sy + 4);
-        }
+          // 绘制向量箭头
+          embCtx.strokeStyle = (w.name === selectedWord) ? '#2563eb' : '#cbd5e1';
+          embCtx.lineWidth = (w.name === selectedWord) ? 2.5 : 1;
+          embCtx.beginPath();
+          embCtx.moveTo(eMidX, eMidY);
+          embCtx.lineTo(px, py);
+          embCtx.stroke();
 
-        // 获取选中的两个词
-        const wa = document.getElementById('word_a').value;
-        const wb = document.getElementById('word_b').value;
-        const va = wordVectors[wa];
-        const vb = wordVectors[wb];
+          // 绘制点与文字
+          embCtx.fillStyle = (w.name === selectedWord) ? '#2563eb' : (w.cat === 'fruit' ? '#16a34a' : (w.cat === 'vehicle' ? '#dc2626' : '#d97706'));
+          embCtx.beginPath();
+          embCtx.arc(px, py, 6, 0, Math.PI * 2);
+          embCtx.fill();
 
-        if (va && vb) {
-          const sxa = originX + va.x * scale;
-          const sya = originY - va.y * scale;
-          const sxb = originX + vb.x * scale;
-          const syb = originY - vb.y * scale;
+          embCtx.fillStyle = '#0f172a';
+          embCtx.font = (w.name === selectedWord) ? 'bold 13px Segoe UI' : '12px Segoe UI';
+          embCtx.fillText(w.name, px + 8, py + 4);
+        });
 
-          // 连线
-          eCtx.strokeStyle = '#2563eb';
-          eCtx.setLineDash([4, 4]);
-          eCtx.lineWidth = 2;
-          eCtx.beginPath();
-          eCtx.moveTo(originX, originY); eCtx.lineTo(sxa, sya);
-          eCtx.moveTo(originX, originY); eCtx.lineTo(sxb, syb);
-          eCtx.stroke();
-          eCtx.setLineDash([]);
+        // 计算相似度列表
+        const simList = document.getElementById('sim_list');
+        simList.innerHTML = '';
+        const normBase = Math.sqrt(baseVec.x * baseVec.x + baseVec.y * baseVec.y);
 
-          // 计算余弦相似度
-          const dot = va.x * vb.x + va.y * vb.y;
-          const normA = Math.sqrt(va.x * va.x + va.y * va.y);
-          const normB = Math.sqrt(vb.x * vb.x + vb.y * vb.y);
-          const cosSim = dot / (normA * normB);
-          const angleDeg = (Math.acos(Math.max(-1, Math.min(1, cosSim))) * 180 / Math.PI);
+        wordVectors.forEach(w => {
+          if (w.name === selectedWord) return;
+          const dot = baseVec.x * w.x + baseVec.y * w.y;
+          const normW = Math.sqrt(w.x * w.x + w.y * w.y);
+          const cosSim = dot / (normBase * normW);
 
-          document.getElementById('sim_disp').innerText = cosSim.toFixed(3);
-          document.getElementById('angle_disp').innerText = angleDeg.toFixed(1) + '°';
-        }
+          const row = document.createElement('div');
+          row.innerHTML = `vs <strong>${w.name}</strong>: <span style="color:${cosSim > 0.8 ? '#16a34a' : (cosSim > 0 ? '#475569' : '#dc2626')}">${cosSim.toFixed(3)}</span>`;
+          simList.appendChild(row);
+        });
       }
 
-      document.getElementById('word_a').addEventListener('change', drawEmbedding);
-      document.getElementById('word_b').addEventListener('change', drawEmbedding);
-      drawEmbedding();
+      embCanvas.addEventListener('click', (e) => {
+        const rect = embCanvas.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+
+        wordVectors.forEach(w => {
+          const px = eMidX + w.x * 55;
+          const py = eMidY - w.y * 50;
+          if (Math.hypot(cx - px, cy - py) < 15) {
+            selectedWord = w.name;
+            document.getElementById('cur_emb_word').innerText = selectedWord;
+            drawEmbSpace();
+          }
+        });
+      });
+
+      drawEmbSpace();
     </script>
 
-    <h2>5. 极小规模人工计算 (Embedding 查表走查)</h2>
-    <div class="logic-box">
-      <strong>已知条件：</strong><br/>
-      词表大小 $V=4$，特征维度 $D_{model}=3$。<br/>
-      Embedding 权重矩阵 $E$（本质就是一张二维浮点数组）：
-      $$E = \begin{bmatrix}
-      \text{ID 0:} & 0.1 & -0.5 & 0.8 \\
-      \text{ID 1:} & 1.2 & 0.0 & -0.3 \\
-      \text{ID 2:} & -0.9 & 0.4 & 0.7 \\
-      \text{ID 3:} & 0.5 & 0.5 & 0.0
-      \end{bmatrix}_{4 \times 3}$$
-      输入句子序列的 Token IDs：$X = \begin{bmatrix} 2 & 0 & 3 \end{bmatrix}$ (长度 $L=3$)<br/><br/>
-      <strong>查表输出矩阵 $H$（直接读取第 2、0、3 行）：</strong>
-      $$H = \begin{bmatrix}
-      E[2] \\ E[0] \\ E[3]
-      \end{bmatrix} = \begin{bmatrix}
-      -0.9 & 0.4 & 0.7 \\
-      0.1 & -0.5 & 0.8 \\
-      0.5 & 0.5 & 0.0
-      \end{bmatrix}_{3 \times 3}$$
-    </div>
-
-    <h2>6. Python / NumPy 极简代码实现</h2>
+    <h2>4. Python / NumPy 极简 Embedding 查表实现</h2>
     <pre><code class="language-python">import numpy as np
 
-# 1. 创建 Embedding 权重查找表 (Vocab=1000, Dim=4096)
-vocab_size = 1000
-d_model = 4096
-embedding_table = np.random.randn(vocab_size, d_model).astype(np.float32)
+class EmbeddingLayer:
+    def __init__(self, vocab_size=32000, embed_dim=4096):
+        # 权重矩阵表 [V, D]
+        self.W_embed = np.random.randn(vocab_size, embed_dim) * 0.02
 
-# 2. 输入 Batch=2, SeqLen=3 的 Token ID 数组
-token_ids = np.array([[10, 42, 99],
-                      [5,  18, 500]], dtype=np.int64)
+    def forward(self, token_ids: np.ndarray) -> np.ndarray:
+        # 底层直接通过索引切片切出对应行 (零浮点计算)
+        return self.W_embed[token_ids]
 
-# 3. 查表操作 (NumPy 数组高级花式索引)
-# 等价于 PyTorch 的 nn.Embedding(vocab_size, d_model)(token_ids)
-embedded_tensor = embedding_table[token_ids]
+embed = EmbeddingLayer(vocab_size=10, embed_dim=4)
+token_ids = np.array([1, 4, 2]) # 长度为 3 的输入句子
+vectors = embed.forward(token_ids)
 
-print("输出张量 Shape:", embedded_tensor.shape)  # 输出: (2, 3, 4096)
+print("输入 Token IDs:", token_ids)
+print("查表输出张量 Shape:", vectors.shape) # [3, 4]
+print("第 0 个 Token 向量:", np.round(vectors[0], 3))
 </code></pre>
 
-    <h2>7. 数学原理与物理直觉</h2>
-    <p>
-      在数学上，Embedding 查表操作等价于<strong>输入一个 One-Hot 稀疏独热向量与整个权重矩阵相乘</strong>：
-      $$[0, 0, 1, 0] \times E = E[2]$$
-      但在实际工程实现中，**绝对没有任何框架会真正执行这种极其低效的 One-Hot 稀疏矩阵乘法**，而是直接按地址偏移量（Offset）从连续内存中拷贝整行浮点数据！
-    </p>
-
-    <h2>8. 打开黑盒：真实工程细节 (内存访问与指针偏移)</h2>
+    <h2>5. 打开黑盒：真实工程细节 (Weight Tying 权重绑定)</h2>
     <div class="card">
-      <strong>C/C++ 底层实现逻辑：</strong><br/>
-      在 <code>llama.cpp</code> 或纯 C 推理引擎中，Embedding 操作就是一条极其纯粹的 <code>memcpy</code>：
-      <pre><code>// 内存基地址 + ID * 维度 * sizeof(float)
-float* token_vec = &embedding_table[token_id * d_model];
-memcpy(output_buffer, token_vec, d_model * sizeof(float));</code></pre>
-      这是一个纯粹的 <strong>Memory-bound 随机内存读取操作</strong>。
+      <strong>节省数十亿参数的妙招：</strong><br/>
+      在许多主流模型（如 GPT-2、PaLM、Gemma）中，最开始的 <strong>Embedding 权重矩阵 $W_E$</strong> 与模型最后生成 Logits 的 <strong>LM Head 输出矩阵 $W_{head}$</strong> 实际上是<strong>完全共享同一块显存（Weight Tying）</strong>的！<br/>
+      因为输入 Embedding 是“从词到向量”，而 LM Head 是“从向量还原为词”，两者互为转置投影，共享权重既节省了大量显存，又防止了模型过拟合！
     </div>
 
-    <h2>9. 动手实验与思考题</h2>
+    <h2>6. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：</strong><br/>
-      如果一个大模型的词表大小为 $V=128000$，隐藏维度 $D_{model}=4096$，采用 <code>float16</code>（2 字节/浮点数）存储。<br/>
-      请问仅仅这一个 Embedding 查表矩阵，需要占用多少 MB 的显存？<br/>
-      <em>提示：计算 $128000 \times 4096 \times 2 \text{ Bytes}$。</em>
+      如果两个词（例如 "good" 和 "great"）在现实语料中经常出现在完全相同的句式上下文中，经过梯度下降训练后，它们的 Embedding 向量夹角会变大还是变小？<br/>
+      <em>提示：会迅速变小，余弦相似度趋向于 1.0！因为反向传播会对相同的上下文预测施加极其相似的梯度更新。</em>
     </div>
 
 

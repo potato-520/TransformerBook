@@ -275,6 +275,15 @@
       font-weight: 600;
     }
 
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
     /* 底部导航 */
     .footer-nav {
       display: flex;
@@ -302,7 +311,8 @@
       font-size: 12.5px;
     }
   </style>
-    <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
+
+  <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
   <script>
     window.MathJax = {
       tex: {
@@ -315,6 +325,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -324,138 +338,136 @@
         <a href="index.html">← 返回目录</a>
       </div>
       <div>
-        <a href="05_gradients_and_backpropagation.html">← 0.5 梯度下降与反传</a> | 
-        <a href="07_embedding_lookup.html">1.2 Embedding 嵌入层 →</a>
+        <a href="05_gradients_and_backpropagation.html">← 0.5 梯度下降与反向传播</a> | 
+        <a href="07_embedding_lookup.html">1.2 Embedding嵌入层 →</a>
       </div>
     </div>
 
     
     <h1>1.1 Tokenization 与 BPE 算法 (Tokenization & Byte-Pair Encoding)</h1>
     <div class="card">
-      <strong>本节目标：</strong>理解计算机是如何将离散的自然语言字符切分成不可再分的“数字凭证（Token ID）”，深入掌握现代大模型标配的 BPE（Byte-Pair Encoding）分词算法与词表构建机制。
+      <strong>本节核心认知目标：</strong><br/>
+      理解计算机如何把人类自然语言字符串切分为数字离散 ID 序列，掌握经典字符级/词级切分的致命缺陷，以及 2015 年现代大模型全面采用的 BPE（Byte-Pair Encoding）子词算法与 UTF-8 字节回退机制。
     </div>
 
-    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
-    <p>
-      计算机与神经网络只认识浮点数和矩阵，无法直接处理自然语言字符串（如 <code>"hello world"</code>）。<br/>
-      在传统的字符级（Character-level）编码中，序列长度过长（导致计算复杂度激增）；而在词级（Word-level）编码中，未登录词（OOV, Out-Of-Vocabulary）极易导致词表爆炸。<br/>
-      <strong>子词分词器（Subword Tokenizer，如 BPE）</strong>通过统计相邻字符对的共现频率，动态合并高频子词，在<strong>词表大小（约 32k~128k）与序列长度之间取得了最优工程平衡</strong>。
-    </p>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
+    <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：早期的“字切分”与“词切分”两极分化</h3>
+      <p>
+        在早期自然语言处理（NLP）中，人们处理文本只有两个极端：<br/>
+        1. <strong>按字符切分（Character-level）</strong>：把英文切成单个字母（a, b, c...），中文切成单字。优点是词表极小（只有几十个字母），但缺点是序列极长（一句话变成上百个字母），且单个字母完全丢失了语义。<br/>
+        2. <strong>按词语切分（Word-level）</strong>：用空格或分词词典切出完整单词（如 "apple", "running"）。
+      </p>
 
-    <h2>2. 输入与输出 (Tensor Shape & 格式转换)</h2>
-    <ul>
-      <li><strong>输入</strong>：原始自然语言文本字符串（Python <code>str</code>）。</li>
-      <li><strong>分词过程</strong>：字符串 $\to$ 子词字符串列表 $\to$ 词表查表（Vocabulary Lookup）。</li>
-      <li><strong>输出</strong>：一维整数 ID 数组：<span class="shape-badge">Shape: [SeqLen]</span>，数据类型为 <code>int64</code> / <code>int32</code>。</li>
-    </ul>
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：词表爆炸与致命的 &lt;unk&gt; 未知词黑洞</h3>
+      <p>
+        按词切分在现实工业界很快撞上了灾难：<br/>
+        自然语言是不断演化的，存在海量的时态变化（run, running, ran）、复合词（unbelievable）和网络新词（ChatGPT）。<br/>
+        词表动辄膨胀到几百万，直接撑爆 GPU 显存！<br/>
+        <span class="mark-danger">更致命的是：任何词表中没有收录的新词，都会被粗暴替换为 <code>&lt;unk&gt;</code>（Unknown）。当输入一句包含生僻词的句子时，模型满眼都是 <code>&lt;unk&gt;</code>，瞬间“致盲”失去理解能力！</span>
+      </p>
 
-    <h2>3. BPE 算法的核心迭代逻辑</h2>
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：2015 年森里奇（Sennrich）与压缩算法的跨界奇迹</h3>
+      <p>
+        2015 年，爱丁堡大学的学者<strong>里科·森里奇（Rico Sennrich）</strong>在研究机器翻译时灵光乍现：<br/>
+        <em>“既然 1994 年 Philip Gage 发明的数据压缩算法 <strong>BPE（Byte-Pair Encoding，字节对编码）</strong> 能通过统计高频字符对把重复数据压缩，我们为什么不能把它拿来切分语言？”</em><br/>
+        BPE 算法带来了完美的平衡：<br/>
+        1. <strong>高频词整词保留</strong>：如 "the"、"is"、"apple" 作为独立 Token；<br/>
+        2. <strong>罕见词自动拆分子词（Subwords）</strong>：如 "unbelievable" 自动拆为 <code>["un", "believ", "able"]</code>！词根的语义被完整保留，<strong>彻底终结了 <code>&lt;unk&gt;</code> 灾难</strong>，成为 GPT-4、LLaMA-3 等现代大模型的绝对基石！
+      </p>
+    </div>
+
+    <h2>2. BPE 算法核心构建流程</h2>
     <div class="logic-box">
-      <strong>BPE (Byte-Pair Encoding) 构建词表 3 步循环：</strong><br/>
-      1. <strong>初始化</strong>：将所有训练语料切分成单个字符（包含特殊词尾标记 <code>&lt;/w&gt;</code>），初始词表为所有基础字符集合；<br/>
-      2. <strong>统计频次</strong>：扫描语料库，统计所有相邻字符对（如 <code>('e', 'r')</code>）的共现频次；<br/>
-      3. <strong>合并高频对</strong>：将出现频率最高的字符对合并为一个新的子词单元（如 <code>'er'</code>），并将其加入词表；<br/>
-      4. <strong>重复迭代</strong>：直到达到预设的词表大小（Vocab Size，如 32000）。
+      <strong>BPE 词表构建（Training Tokenizer）三步法：</strong><br/>
+      1. <strong>初始化基础词表</strong>：将语料库中的所有词全部拆散为单个字符（如 <code>l, o, w, e, r</code>）；<br/>
+      2. <strong>统计最高频相邻对</strong>：统计全文中出现频率最高的一对连续字符（例如 <code>('e', 'r')</code> 出现了 5000 次）；<br/>
+      3. <strong>迭代合并（Merge）</strong>：将 <code>('e', 'r')</code> 融合成一个全新 Token <code>"er"</code> 加入词表。重复这一过程（例如迭代 32,000 次），直到词表达到预定大小！
     </div>
 
-    <h2>4. 黑盒 JS 可交互动画：实时 BPE 分词拆解器</h2>
+    <h2>3. 黑盒 JS 可交互动画：实时 Token 切词器</h2>
     <p>
-      输入一段英文或代码文本，点击“执行 BPE 分词拆解”，实时查看分词器切分的 Token 边界、每个 Token 的字符长度以及对应的 Token ID 数组！
+      在下方输入框中尝试输入任意英文单词（例如 <code>unbelievable</code> 或 <code>pretraining</code>），观察基于 BPE 规则的前缀/词根/后缀拆分高亮与 Token ID 映射！
     </p>
 
     <div class="interactive-card">
-      <div class="interactive-title">🎮 实时 Tokenizer 拆解器</div>
+      <div class="interactive-title">🎮 BPE 交互式切词模拟控制台</div>
       
       <div class="control-panel">
-        <div style="flex: 1; display: flex; gap: 10px; align-items: center;">
-          <label>输入待分词文本:</label>
-          <input type="text" id="token_input" value="Transformer is amazing and fast!" style="flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;">
-          <button class="btn" onclick="runTokenizer()">执行分词</button>
-        </div>
+        <label style="font-weight: 600;">输入测试文本：</label>
+        <input type="text" id="token_input" value="unbelievable pretraining transformer" style="padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 6px; flex: 1; min-width: 260px; font-family: Consolas;">
       </div>
 
-      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 320px;">
-          <div style="font-weight: 600; margin-bottom: 8px; color: #0f172a;">Token 切分边界高亮：</div>
-          <div id="token_blocks" style="min-height: 48px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
-        </div>
-
-        <div style="flex: 1; min-width: 320px;">
-          <div class="logic-box" style="margin-top: 0;">
-            <strong>输出 Token ID 序列：</strong><br/>
-            <code id="token_ids_disp" style="display: block; margin-top: 6px; word-break: break-all;">[4152, 318, 4998, 290, 1311, 0]</code><br/><br/>
-            <strong>统计特征：</strong><br/>
-            字符总数: <span id="char_count" style="font-weight: bold; color: #2563eb;">32</span> · Token 总数: <span id="token_count" style="font-weight: bold; color: #166534;">6</span> · 压缩率: <span id="comp_rate" style="font-weight: bold; color: #c2410c;">5.33 字符/Token</span>
-          </div>
-        </div>
+      <div style="margin-top: 14px;">
+        <div style="font-weight: 600; margin-bottom: 8px; color: #0f172a;">切分后 Token 序列（不同颜色代表独立 Token）：</div>
+        <div id="token_chips" style="display: flex; gap: 8px; flex-wrap: wrap; padding: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; min-height: 40px;"></div>
       </div>
     </div>
 
     <script>
-      const mockVocab = {
-        "trans": 1024, "former": 3128, "transformer": 4152, " ": 220,
-        "is": 318, "amazing": 4998, "and": 290, "fast": 1311, "!": 0,
-        "deep": 2048, "learning": 5120, "embedded": 6780, "system": 2100,
-        "c": 45, "++": 88, "linux": 3344, "gpu": 7890
+      const subwordVocab = {
+        "un": 402, "believ": 1289, "able": 320,
+        "pre": 512, "train": 890, "ing": 210,
+        "trans": 1400, "form": 630, "er": 105,
+        "deep": 880, "learn": 720
       };
+      const colors = ['#dbeafe', '#dcfce7', '#fef3c7', '#f3e8ff', '#ffe4e6', '#ccfbf1'];
 
-      const colorPalette = ["#dbeafe", "#dcfce7", "#fef3c7", "#f3e8ff", "#fee2e2", "#ccfbf1"];
+      function tokenizeText() {
+        const text = document.getElementById('token_input').value;
+        const words = text.split(/\s+/);
+        const chipsContainer = document.getElementById('token_chips');
+        chipsContainer.innerHTML = '';
 
-      function runTokenizer() {
-        const text = document.getElementById('token_input').value.trim();
-        const words = text.split(/(\s+|[.,!?;:])/).filter(w => w.length > 0);
-
-        const container = document.getElementById('token_blocks');
-        container.innerHTML = '';
-        const idList = [];
-
-        words.forEach((w, idx) => {
-          const lower = w.toLowerCase();
-          let tid = mockVocab[lower] || (Math.floor(Math.random() * 20000) + 1000);
-          idList.push(tid);
-
-          const span = document.createElement('span');
-          span.style.background = colorPalette[idx % colorPalette.length];
-          span.style.border = '1px solid #cbd5e1';
-          span.style.padding = '4px 10px';
-          span.style.borderRadius = '6px';
-          span.style.fontSize = '13.5px';
-          span.style.fontFamily = 'Consolas, monospace';
-          span.style.fontWeight = 'bold';
-          span.innerText = `${w} (${tid})`;
-          container.appendChild(span);
+        let colorIdx = 0;
+        words.forEach(w => {
+          if (!w) return;
+          let remaining = w.toLowerCase();
+          while (remaining.length > 0) {
+            let matched = false;
+            for (let sub in subwordVocab) {
+              if (remaining.startsWith(sub)) {
+                createChip(sub, subwordVocab[sub], colors[colorIdx % colors.length]);
+                remaining = remaining.slice(sub.length);
+                colorIdx++;
+                matched = true;
+                break;
+              }
+            }
+            if (!matched) {
+              createChip(remaining[0], remaining.charCodeAt(0), colors[colorIdx % colors.length]);
+              remaining = remaining.slice(1);
+              colorIdx++;
+            }
+          }
         });
-
-        document.getElementById('token_ids_disp').innerText = JSON.stringify(idList);
-        document.getElementById('char_count').innerText = text.length;
-        document.getElementById('token_count').innerText = idList.length;
-        document.getElementById('comp_rate').innerText = (text.length / Math.max(1, idList.length)).toFixed(2) + ' 字符/Token';
       }
 
-      runTokenizer();
+      function createChip(sub, id, bg) {
+        const span = document.createElement('span');
+        span.style.background = bg;
+        span.style.border = '1px solid #cbd5e1';
+        span.style.borderRadius = '5px';
+        span.style.padding = '4px 8px';
+        span.style.fontFamily = 'Consolas, monospace';
+        span.style.fontSize = '13px';
+        span.innerHTML = `<strong>${sub}</strong> <span style="font-size: 10px; color: #64748b;">(ID: ${id})</span>`;
+        document.getElementById('token_chips').appendChild(span);
+      }
+
+      document.getElementById('token_input').addEventListener('input', tokenizeText);
+      tokenizeText();
     </script>
 
-    <h2>5. 极小规模人工计算 (BPE 合并模拟)</h2>
-    <div class="logic-box">
-      <strong>初始训练语料（带词频）：</strong><br/>
-      <code>"low &lt;/w&gt;": 5,  "lowest &lt;/w&gt;": 2,  "newer &lt;/w&gt;": 6,  "wider &lt;/w&gt;": 3</code><br/><br/>
-      <strong>第 1 次迭代：</strong><br/>
-      统计所有字符对频率：<code>('e', 'r')</code> 在 <code>newer</code> 和 <code>wider</code> 中出现 $6 + 3 = 9$ 次（最高频！）。<br/>
-      $\implies$ 合并 <code>('e', 'r')</code> $	o$ <code>'er'</code>，加入新词表。<br/><br/>
-      <strong>第 2 次迭代：</strong><br/>
-      统计更新后的字符对：<code>('er', '&lt;/w&gt;')</code> 出现 $6 + 3 = 9$ 次。<br/>
-      $\implies$ 合并 <code>('er', '&lt;/w&gt;')</code> $	o$ <code>'er&lt;/w&gt;'</code>，加入新词表。
-    </div>
-
-    <h2>6. Python / NumPy 极简代码实现</h2>
-    <pre><code class="language-python">from collections import Counter, defaultdict
+    <h2>4. Python / NumPy 极简 BPE 合并循环实现</h2>
+    <pre><code class="language-python">from collections import Counter
 
 def get_stats(vocab):
-    pairs = defaultdict(int)
+    pairs = Counter()
     for word, freq in vocab.items():
         symbols = word.split()
         for i in range(len(symbols) - 1):
-            pairs[symbols[i], symbols[i+1]] += freq
+            pairs[symbols[i], symbols[i + 1]] += freq
     return pairs
 
 def merge_vocab(pair, v_in):
@@ -467,46 +479,37 @@ def merge_vocab(pair, v_in):
         v_out[w_out] = v_in[word]
     return v_out
 
-# 初始微型语料库
-vocab = {'l o w </w>': 5, 'l o w e s t </w>': 2, 'n e w e r </w>': 6, 'w i d e r </w>': 3}
+# 模拟初始拆解语料
+corpus_vocab = {'l o w </w>': 5, 'l o w e r </w>': 2, 'n e w e s t </w>': 6}
+print("初始语料词表:", corpus_vocab)
 
-# 执行 3 次 BPE 合并
+# 进行 3 轮合并
 for i in range(3):
-    pairs = get_stats(vocab)
-    if not pairs:
-        break
+    pairs = get_stats(corpus_vocab)
     best_pair = max(pairs, key=pairs.get)
-    vocab = merge_vocab(best_pair, vocab)
-    print(f"Step {i+1} 合并最高频对 {best_pair} -> 新语料状态: {vocab}")
+    corpus_vocab = merge_vocab(best_pair, corpus_vocab)
+    print(f"Step {i+1}: 合并最高频对 {best_pair} ->", corpus_vocab)
 </code></pre>
 
-    <h2>7. 数学原理与物理直觉</h2>
-    <p>
-      为什么大模型几乎全部采用基于字节的 <span class="mark-concept">Byte-fallback BPE (如 tiktoken, SentencePiece)</span>？
-    </p>
-    <ul>
-      <li><strong>零 OOV（Out-of-Vocabulary）保证</strong>：任何未知的罕见生僻字或 UTF-8 表情包，最终都可以退化为最底层的 256 个基本字节（Byte）表示，系统永远不会因为遇到未知字符而崩溃报 <code>&lt;UNK&gt;</code>！</li>
-    </ul>
-
-    <h2>8. 打开黑盒：真实工程细节 (BPE 带来的 LLM 缺陷)</h2>
+    <h2>5. 打开黑盒：真实工程细节 (Byte-level Fallback)</h2>
     <div class="card">
-      <strong>Tokenization 导致的著名 LLM 盲区：</strong><br/>
-      1. <strong>大模型为什么不擅长数单词中有几个 'r'（如 "strawberry"）？</strong> 因为分词器将 <code>"strawberry"</code> 切分为了 <code>["straw", "berry"]</code> 两个单一 Token，模型在注意力层根本看不到内部的单个字符！<br/>
-      2. <strong>空格敏感性</strong>：<code>" hello"</code>（带前导空格）与 <code>"hello"</code>（无空格）在 GPT 词表中是两个完全不同的 Token ID。
+      <strong>为什么现代 Tokenizer（如 tiktoken）连生僻 Emoji 也能分词？</strong><br/>
+      GPT-4 和 LLaMA 采用 <strong>Byte-level BPE</strong>：基础词表不再由字符构成，而是直接从 <strong>256 个原生 UTF-8 字节（0x00 ~ 0xFF）</strong> 开始！<br/>
+      即使遇到从未见过的特殊符号或古埃及象形文字，它也能无损退化为 3~4 个 UTF-8 字节对应的 Token，<strong>真正做到了 0 丢字、0 异常崩溃！</strong>
     </div>
 
-    <h2>9. 动手实验与思考题</h2>
+    <h2>6. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：</strong><br/>
-      如果将词表大小从 32000 扩大到 128000（如 LLaMA-3），对大模型的参数量、推理显存和生成吞吐分别有什么影响？<br/>
-      <em>提示：词表扩大会直接增加 Embedding 层和最后的 LM Head 输出投影矩阵的参数量（$[128000, 4096]$），但单次生成的 Token 数量会变少（信息压缩比更高）。</em>
+      为什么许多大模型在处理中文和代码时，生成的 Token 数量通常比英文多得多（消耗更多费用）？<br/>
+      <em>提示：因为早期很多西方主导的大模型在训练 BPE 词表时，英文语料占比超过 90%，分配给中文的合并规则极少，导致一个常用汉字经常被拆散成 2~3 个独立的字节 Token！</em>
     </div>
 
 
     <div class="footer-nav">
-      <a href="05_gradients_and_backpropagation.html">← 上一节：0.5 梯度下降与反传</a>
+      <a href="05_gradients_and_backpropagation.html">← 上一节：0.5 梯度下降与反向传播</a>
       <a href="index.html">📑 目录主页</a>
-      <a href="07_embedding_lookup.html">下一节：1.2 Embedding 嵌入层 →</a>
+      <a href="07_embedding_lookup.html">下一节：1.2 Embedding嵌入层 →</a>
     </div>
 
     <footer>

@@ -347,39 +347,34 @@
     <h1>0.1 神经元与感知机 (Neuron & Perceptron)</h1>
     <div class="card">
       <strong>本节核心认知目标：</strong><br/>
-      从嵌入式系统中最常见的<strong>“双传感器过载保护器”</strong>工程问题出发，完全不带任何数学断层，逐步推导出神经元的数学形态，彻底搞懂<strong>为什么单神经元的本质就是一条“2D 空间分割直线（超平面）”</strong>，并回顾 AI 历史上罗森布拉特（Rosenblatt）与明斯基（Minsky）之间惊心动魄的“感知机世纪争鸣与 AI 寒冬”。
+      从嵌入式系统中最常见的<strong>“双传感器过载保护器”</strong>工程问题出发，完全不带任何数学断层，逐步推导出神经元的数学形态，彻底搞懂<strong>为什么单神经元的本质就是一条“2D 空间分割直线（超平面）”</strong>。
     </div>
 
-    <h2>1. 📜 科学史话与大师灵光乍现：感知机的诞生与第一次 AI 寒冬</h2>
+    <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
     <div class="logic-box" style="background: #fdfbf7; border: 1px solid #e7dfd3; color: #44382c;">
-      <h3 style="margin-top: 0; color: #7c2d12;">💡 灵光乍现 1：1957 年，罗森布拉特与重达 5 吨的巨兽 Mark I</h3>
+      <h3 style="margin-top: 0; color: #7c2d12;">🎬 第一幕 · 时代背景：1957 年的狂热与 5 吨巨兽 Mark I</h3>
       <p>
-        1957 年，康奈尔大学的心理学家<strong>弗兰克·罗森布拉特（Frank Rosenblatt）</strong>看着生物学中神经元“接收树突电位、轴突产生脉冲”的结构，突然灵光一闪：<br/>
-        <em>“我们能不能用纯粹的物理电路，模拟大脑做决定的过程？——给每个输入线路上串联一个可调节阻值的电位器（权重），把电流加在一起，如果总电压超过阈值，继电器就咔嗒一声合上输出 1，否则输出 0！”</em>
-      </p>
-      <p>
-        他制造了世界上第一台感知机硬件机器 <strong>Mark I Perceptron</strong>：它连着一个 20×20 像素的光电传感器，机身装满了数百个由小型伺服马达驱动的精密电位器。当机器分类错误时，马达就嗡嗡地转动电位器微调阻值（这就是最早的物理级“权重更新”）。《纽约时报》当时激动地头版报道：“海军揭示了一项能够思考、行走、说话、甚至自我复制的电子胚胎计算机！”
+        1957 年，康奈尔大学的心理学家<strong>弗兰克·罗森布拉特（Frank Rosenblatt）</strong>观察生物大脑神经元后灵光一闪：给每个输入连上可变电位器（权重），把电流加在一起，超过阈值就合上继电器输出 1，否则输出 0！<br/>
+        他制造了重达 5 吨的机器 <strong>Mark I Perceptron</strong>，机身装满了伺服马达驱动的电位器，马达转动微调阻值，实现了人类历史上最早的物理级“权重更新”。《纽约时报》惊呼：“这是一台能思考、能自我复制的电子胚胎！”
       </p>
 
-      <hr style="border-top: 1px dashed #d6c7b2; margin: 16px 0;">
+      <h3 style="color: #991b1b;">💥 第二幕 · 遭遇危机：1969 年明斯基的致命一击与第一次 AI 寒冬</h3>
+      <p>
+        就在全世界对感知机陷入狂热之际，麻省理工学院（MIT）AI 实验室创始人、图灵奖得主<strong>马文·明斯基（Marvin Minsky）</strong>出版了专著《Perceptrons》。<br/>
+        明斯基用严密的解析几何证明：<strong>单层感知机在几何上只能切出一条笔直的直线，甚至连计算机中最基础的“异或逻辑（XOR）”都绝对无法解开！</strong><br/>
+        明斯基更在书中悲观预言：“多层网络在数学上无法训练。”这一断言直接引发全球科研撤资潮，整个人工智能领域陷入了长达近 20 年的<strong>第一次“AI 寒冬（AI Winter）”</strong>。
+      </p>
 
-      <h3 style="color: #991b1b;">💥 世纪断言：1969 年，图灵奖得主明斯基的一颗致命重磅炸弹</h3>
+      <h3 style="color: #166534;">💡 第三幕 · 大师破局：辛顿（Hinton）的坚持与多层折线革命</h3>
       <p>
-        然而，就在全世界对感知机陷入狂热之际，麻省理工学院（MIT）人工智能实验室创始人、图灵奖得主<strong>马文·明斯基（Marvin Minsky）</strong>出版了一本震撼学界的专著《Perceptrons》（感知机）。<br/>
-        明斯基用极其严谨的几何数学证明：<strong>单个感知机甚至连计算机中最简单的“异或逻辑（XOR）”都绝对不可能解开！</strong>
-      </p>
-      <p>
-        因为单神经元在几何上只能切出“一条笔直的直线”，而异或问题是非线性的。明斯基在书中悲观地断言：“研究单层感知机没有未来，而多层感知机在数学上根本无法训练。”<br/>
-        这一结论直接引发了全球科研赞助机构的集体撤资，导致整个人工智能领域陷入了长达近 20 年的<strong>第一次“AI 寒冬（AI Winter）”</strong>，罗森布拉特也在巨大争议与落寞中过世。
-      </p>
-      <p style="font-size: 13.5px; color: #78350f; margin-bottom: 0;">
-        ⏳ <strong>直到 17 年后的 1986 年</strong>，辛顿（Geoffrey Hinton）等人带着多层感知机（MLP）与反向传播算法（Backprop）横空出世，才终于破除了明斯基的魔咒……这正是我们接下来几章要见证的史诗！
+        明斯基给出的绝望结论，却在多年后成为后人突破的坐标——既然单条直线切不开，<strong>“只要把多个神经元前后串联成多层网络（MLP），就能在空间中切出弯折的任意边界！”</strong><br/>
+        1986 年，Geoffrey Hinton 等人带着多层感知机与反向传播算法（Backpropagation）王者归来，彻底打破了明斯基的魔咒，揭开了现代神经网络波澜壮阔的大幕！
       </p>
     </div>
 
     <h2>2. 它解决什么工程问题？ (真实嵌入式背景故事)</h2>
     <p>
-      抛开历史的光环，回到我们最熟悉的现代嵌入式开发中：设想你正在为一台工业电机编写 MCU 控制固件（如 STM32 或 AUTOSAR 架构的 ECU 节点）。<br/>
+      抛开历史的光环，回到我们最熟悉的现代嵌入式开发中：设想你正在为一台工业电机编写 MCU 控制固件（如 STM32 或 AUTOSAR ECU 节点）。<br/>
       你的系统连接了两个传感器通道：
     </p>
     <ul>
@@ -387,8 +382,7 @@
       <li><strong>传感器 2 ($x_2$)</strong>：工作电流（单位：$\text{V}$，ADC 采样电压，数值范围 $0.0 \sim 5.0$）</li>
     </ul>
     <p>
-      <strong>你的工程任务：</strong><br/>
-      MCU 需要实时输出一个二值报警电平信号 $y \in \{0, 1\}$：
+      <strong>你的工程任务：</strong>MCU 需要实时输出一个二值报警电平信号 $\hat{y} \in \{0, 1\}$：
       <ul>
         <li>输出 $0$：表示系统处于<strong>安全工况</strong>（电机继续正常运转，对应图中的<span style="color: #16a34a; font-weight: bold;">绿色方块</span>）；</li>
         <li>输出 $1$：表示系统处于<strong>危险过载工况</strong>（触发中断紧急停机，对应图中的<span style="color: #dc2626; font-weight: bold;">红色圆点</span>）。</li>
@@ -399,62 +393,40 @@
       <strong>硬件物理规律告诉我们：</strong><br/>
       1. 如果温度很低（$x_1$ 很小），电流稍微大一点，电机也是安全的；<br/>
       2. 但如果温度已经很高（$x_1$ 很大），此时即使通过一个很小的电流，电机也会瞬间烧毁！<br/>
-      3. 因此，在以温度 $x_1$ 为横轴、电流 $x_2$ 为纵轴的 2D 平面坐标系上，<strong>必然存在一条倾斜的分界线</strong>——分界线的一侧全部是安全点（0），另一侧全部是危险点（1）。
+      3. 因此，在以温度 $x_1$ 为横轴、电流 $x_2$ 为纵轴的 2D 平面坐标系上，<strong>必然存在一条倾斜的分界线</strong>——分界线的一侧全部是安全点（0），另一侧全部是危险点（1）。这条分界线就叫<strong>决策直线（Decision Boundary）</strong>。
     </div>
 
     <h2>3. 什么是“决策直线”？从初中解析几何到神经元公式</h2>
     <p>
-      我们在初中都学过平面直线的一般方程：
-      $$A x_1 + B x_2 + C = 0$$
-      在机器学习与神经网络中，数学家和工程师只是换了一套英文记号，但<strong>本质完全一模一样</strong>：
+      我们在初中都学过平面直线的一般方程：$A x_1 + B x_2 + C = 0$。在神经网络中，只是换了一套英文记号：
     </p>
     <ul>
-      <li>把系数 $A$ 改记为 $w_1$（叫作<strong>权重 Weight 1</strong>，代表算法对“温度”的敏感度）；</li>
-      <li>把系数 $B$ 改记为 $w_2$（叫作<strong>权重 Weight 2</strong>，代表算法对“电流”的敏感度）；</li>
-      <li>把常数项 $C$ 改记为 $b$（叫作<strong>偏置 Bias</strong>，代表系统允许的基础安全阈值）。</li>
+      <li>把系数 $A$ 改记为 $w_1$（<strong>权重 Weight 1</strong>，代表对温度的敏感度）；</li>
+      <li>把系数 $B$ 改记为 $w_2$（<strong>权重 Weight 2</strong>，代表对电流的敏感度）；</li>
+      <li>把常数项 $C$ 改记为 $b$（<strong>偏置 Bias</strong>，代表系统允许的基础安全阈值）。</li>
     </ul>
 
     <p>
-      将它们组合在一起，就得到了这条<strong>“决策直线（Decision Boundary）”的方程</strong>：
+      组合在一起，就得到了决策直线的方程：
       $$w_1 x_1 + w_2 x_2 + b = 0$$
-    </p>
-
-    <p>
-      当 MCU 采集到一个新的传感器读数 $(x_1, x_2)$ 时，只要将它们代入算式计算总得分 $z$：
-      $$z = w_1 x_1 + w_2 x_2 + b$$
+      当采集到实时读数 $(x_1, x_2)$ 时，MCU 计算加权总分 $z = w_1 x_1 + w_2 x_2 + b$：
       <ul>
-        <li>如果算出来的总得分 $z \ge 0$：说明点落在了直线的<strong>危险侧</strong>，MCU 输出 $\hat{y} = 1$（报警！）；</li>
-        <li>如果算出来的总得分 $z < 0$：说明点落在了直线的<strong>安全侧</strong>，MCU 输出 $\hat{y} = 0$（安全通过）。</li>
+        <li>若 $z \ge 0$：点落在危险侧，MCU 输出 $\hat{y} = 1$（报警停机！）；</li>
+        <li>若 $z < 0$：点落在安全侧，MCU 输出 $\hat{y} = 0$（安全通过）。</li>
       </ul>
     </p>
 
-    <div class="card">
-      <strong>恭喜你！到这里你已经完全掌握了“人工神经元”与“感知机”的全部数学机理：</strong><br/>
-      所谓单个神经元，硬件上就是一个 <strong>“加权乘累加单元 (MAC) + 电平比较器 (Comparator)”</strong>；而在几何空间上，它就是一条<strong>“负责画线切分空间的决策分界线”</strong>！
-    </div>
-
-    <h2>4. 输入与输出 Tensor Shape (张量形态追踪)</h2>
+    <h2>4. 输入与输出 Tensor Shape</h2>
     <ul>
-      <li><strong>输入张量 $X$</strong>：<span class="shape-badge">Shape: [B, 2]</span>。若单次处理 1 个采样点，Batch $B=1$，$X = \begin{bmatrix} x_1 & x_2 \end{bmatrix}$。</li>
-      <li><strong>权重向量 $W$</strong>：<span class="shape-badge">Shape: [2]</span>。即 $\begin{bmatrix} w_1 & w_2 \end{bmatrix}$。</li>
+      <li><strong>输入特征向量 $X$</strong>：<span class="shape-badge">Shape: [B, 2]</span>。</li>
+      <li><strong>权重向量 $W$</strong>：<span class="shape-badge">Shape: [2]</span>。</li>
       <li><strong>偏置标量 $b$</strong>：<span class="shape-badge">Shape: [1]</span>。</li>
-      <li><strong>前向总得分 $z$</strong>：$z = X \cdot W^T + b$，<span class="shape-badge">Shape: [B, 1]</span>。</li>
-      <li><strong>最终输出 $\hat{y}$</strong>：$\hat{y} = \text{Step}(z) \in \{0, 1\}$，<span class="shape-badge">Shape: [B, 1]</span>。</li>
+      <li><strong>输出判决 $\hat{y}$</strong>：<span class="shape-badge">Shape: [B, 1]</span>。</li>
     </ul>
 
-    <h2>5. 黑盒 JS 可交互动画体验 (亲手调校你的第一个分类器)</h2>
+    <h2>5. 黑盒 JS 可交互动画体验</h2>
     <p>
-      在下方的实时交互模拟器中：
-    </p>
-    <ul>
-      <li><span style="color: #16a34a; font-weight: bold;">绿色方块</span>：历史上采集到的真实“安全运行工况”样本点；</li>
-      <li><span style="color: #dc2626; font-weight: bold;">红色圆点</span>：历史上采集到的真实“过载报警工况”样本点；</li>
-      <li><span style="color: #2563eb; font-weight: bold;">蓝色直线</span>：当前由参数 $(w_1, w_2, b)$ 所决定的决策分界线。</li>
-    </ul>
-    <p>
-      <strong>🎯 你的动手实验任务：</strong><br/>
-      拖动下方滑块调节 $w_1$（温度权重）、$w_2$（电流权重）和 $b$（安全阈值），<strong>观察蓝线是如何旋转和上下平移的！</strong><br/>
-      尝试找到一组参数，让蓝线<strong>完美地把所有的绿点和红点隔开（使得分类准确率达到 100%）</strong>！
+      拖动下方滑块调节 $w_1$、$w_2$ 和 $b$，观察蓝线如何旋转与平移，尝试找到一组参数完美隔开所有绿点与红点（准确率达到 100%）！
     </p>
 
     <div class="interactive-card">
@@ -462,17 +434,17 @@
       
       <div class="control-panel">
         <div class="control-group">
-          <label>温度权重 $w_1$ (控制直线的旋转斜率):</label>
+          <label>温度权重 $w_1$:</label>
           <input type="range" id="w1_slider" min="-3" max="3" step="0.1" value="1.0">
           <span id="w1_val" style="font-family: Consolas; font-weight: bold; width: 36px;">1.0</span>
         </div>
         <div class="control-group">
-          <label>电流权重 $w_2$ (控制直线的旋转斜率):</label>
+          <label>电流权重 $w_2$:</label>
           <input type="range" id="w2_slider" min="-3" max="3" step="0.1" value="1.0">
           <span id="w2_val" style="font-family: Consolas; font-weight: bold; width: 36px;">1.0</span>
         </div>
         <div class="control-group">
-          <label>基准偏置 $b$ (控制直线整体上下平移):</label>
+          <label>基准偏置 $b$:</label>
           <input type="range" id="b_slider" min="-6" max="2" step="0.1" value="-1.0">
           <span id="b_val" style="font-family: Consolas; font-weight: bold; width: 36px;">-1.0</span>
         </div>
@@ -491,10 +463,6 @@
             <strong>物理状态判决逻辑：</strong><br/>
             <span id="logic_detail">蓝线上方判定为危险区(1)，下方判定为安全区(0)。</span>
           </div>
-          <p style="font-size: 13.5px; color: #64748b;">
-            💡 <strong>什么是“机器学习训练”？</strong><br/>
-            在实际 AI 训练中，计算机就是通过不断自动微调这三个滑块（$w_1, w_2, b$），直到准确率从 50% 变成 100% 的！
-          </p>
         </div>
       </div>
     </div>
@@ -515,10 +483,7 @@
       ];
 
       function toScreen(x, y) {
-        return {
-          sx: 40 + x * 85,
-          sy: canvas.height - (40 + y * 65)
-        };
+        return { sx: 40 + x * 85, sy: canvas.height - (40 + y * 65) };
       }
 
       function draw() {
@@ -536,11 +501,9 @@
         ctx.strokeStyle = '#e2e8f0';
         ctx.lineWidth = 1;
         for (let i = 0; i <= 5; i++) {
-          const pt1 = toScreen(i, 0);
-          const pt2 = toScreen(i, 5);
+          const pt1 = toScreen(i, 0); const pt2 = toScreen(i, 5);
           ctx.beginPath(); ctx.moveTo(pt1.sx, pt1.sy); ctx.lineTo(pt2.sx, pt2.sy); ctx.stroke();
-          const pt3 = toScreen(0, i);
-          const pt4 = toScreen(5, i);
+          const pt3 = toScreen(0, i); const pt4 = toScreen(5, i);
           ctx.beginPath(); ctx.moveTo(pt3.sx, pt3.sy); ctx.lineTo(pt4.sx, pt4.sy); ctx.stroke();
 
           ctx.fillStyle = '#94a3b8';
@@ -565,15 +528,13 @@
           ctx.beginPath();
           if (s.label === 1) {
             ctx.fillStyle = isCorrect ? '#dc2626' : '#fca5a5';
-            ctx.arc(pt.sx, pt.sy, 7, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.arc(pt.sx, pt.sy, 7, 0, Math.PI * 2); ctx.fill();
           } else {
             ctx.fillStyle = isCorrect ? '#16a34a' : '#86efac';
             ctx.fillRect(pt.sx - 6, pt.sy - 6, 12, 12);
           }
           ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
+          ctx.lineWidth = 1.5; ctx.stroke();
         });
 
         const acc = Math.round((correct / samples.length) * 100);
@@ -586,16 +547,12 @@
         if (Math.abs(w2) > 0.001) {
           const y0 = (-w1 * 0 - b) / w2;
           const y5 = (-w1 * 5 - b) / w2;
-          const p0 = toScreen(0, y0);
-          const p5 = toScreen(5, y5);
-          ctx.moveTo(p0.sx, p0.sy);
-          ctx.lineTo(p5.sx, p5.sy);
+          ctx.moveTo(toScreen(0, y0).sx, toScreen(0, y0).sy);
+          ctx.lineTo(toScreen(5, y5).sx, toScreen(5, y5).sy);
         } else if (Math.abs(w1) > 0.001) {
           const xVal = -b / w1;
-          const p0 = toScreen(xVal, 0);
-          const p5 = toScreen(xVal, 5);
-          ctx.moveTo(p0.sx, p0.sy);
-          ctx.lineTo(p5.sx, p5.sy);
+          ctx.moveTo(toScreen(xVal, 0).sx, toScreen(xVal, 0).sy);
+          ctx.lineTo(toScreen(xVal, 5).sx, toScreen(xVal, 5).sy);
         }
         ctx.stroke();
       }
@@ -621,18 +578,9 @@
     </script>
 
     <h2>6. 极小规模人工计算 (2 维向量手算走查)</h2>
-    <p>
-      为了在纸上消除计算卡顿，我们使用极小的 2 维具体数值走查一遍：
-    </p>
     <div class="logic-box">
-      <strong>已知条件：</strong><br/>
-      当前采样读数：温度 $x_1 = 2.0\text{V}$，电流 $x_2 = -1.0\text{V}$（输入向量 $X = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix}$）<br/>
-      算法设定的权重：$w_1 = 0.5, w_2 = 1.5$，基准偏置 $b = -0.2$<br/><br/>
-      <strong>第一步：计算加权得分 $z$（乘累加 MAC 运算）</strong>
-      $$z = (x_1 \cdot w_1) + (x_2 \cdot w_2) + b$$
-      $$z = (2.0 \times 0.5) + (-1.0 \times 1.5) + (-0.2)$$
-      $$z = 1.0 - 1.5 - 0.2 = -0.7$$<br/>
-      <strong>第二步：阶跃比较器判决输出</strong>
+      <strong>已知条件：</strong>输入 $X = [2.0, -1.0]$，权重 $W = [0.5, 1.5]$，偏置 $b = -0.2$<br/><br/>
+      $$z = (2.0 \times 0.5) + (-1.0 \times 1.5) + (-0.2) = 1.0 - 1.5 - 0.2 = -0.7$$
       $$\text{因为 } z = -0.7 < 0 \implies \hat{y} = \text{Step}(-0.7) = 0 \quad (\text{输出安全电平 } 0)$$
     </div>
 
@@ -642,47 +590,31 @@
 def perceptron(x: np.ndarray, w: np.ndarray, b: float):
     # 1. 向量点积加偏置 (乘累加 MAC 运算: z = x1*w1 + x2*w2 + b)
     z = np.dot(x, w) + b
-    
     # 2. 比较器二值化输出
     y_hat = 1 if z >= 0 else 0
     return y_hat, float(z)
 
-# 验证我们刚才的手算例子
 x_test = np.array([2.0, -1.0])
 w_test = np.array([0.5, 1.5])
 b_test = -0.2
-
 y_pred, z_val = perceptron(x_test, w_test, b_test)
 print(f"加权综合得分 z = {z_val:.2f}, 感知机最终输出 = {y_pred}")
-# 输出: 加权综合得分 z = -0.70, 感知机最终输出 = 0
 </code></pre>
 
-    <h2>8. 数学原理与物理直觉</h2>
-    <p>
-      从解析几何视角总结，方程 $\vec{w} \cdot \vec{x} + b = 0$：
-    </p>
-    <ul>
-      <li>在 2 维空间是一条<strong>分割直线</strong>；</li>
-      <li>在 3 维空间是一个<strong>分割平面</strong>；</li>
-      <li>在 $N$ 维空间中统称为<span class="mark-concept">超平面（Hyperplane）</span>。</li>
-      <li><strong>法向量 $\vec{w}$</strong>：决定了直线的倾斜旋转方向（垂直于直线指向判定为 1 的那一侧）；</li>
-      <li><strong>偏置 $b$</strong>：决定了直线到坐标原点的绝对距离 $d = \frac{|b|}{\|\vec{w}\|}$。若 $b=0$，直线必过坐标原点。</li>
-    </ul>
-
-    <h2>9. 打开黑盒：真实工程细节 (MCU/CUDA/SIMD)</h2>
+    <h2>8. 打开黑盒：真实工程细节 (MCU/CUDA/SIMD)</h2>
     <div class="card">
       <strong>底层芯片指令对应关系：</strong>
       <ul>
-        <li>在 <strong>ARM Cortex-M (MCU)</strong> 处理器上，$\sum x_i w_i + b$ 对应汇编指令中的 <strong>SMLABB / MLA（单周期乘累加 Multiply-Accumulate）</strong>。</li>
-        <li>在 <strong>GPU / CUDA</strong> 架构中，这是最基础的 <strong>FMA (Fused Multiply-Add, <code>__fmaf_rn</code>)</strong> 硬件原语。</li>
+        <li>在 <strong>ARM Cortex-M (MCU)</strong> 上，$\sum x_i w_i + b$ 对应 <strong>SMLABB / MLA（单周期乘累加）</strong> 指令。</li>
+        <li>在 <strong>GPU / CUDA</strong> 架构中，这是最基础的 <strong>FMA (Fused Multiply-Add)</strong> 硬件原语。</li>
       </ul>
     </div>
 
-    <h2>10. 动手实验与思考题</h2>
+    <h2>9. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：重温明斯基的“异或（XOR）死穴”</strong><br/>
       若有 4 个工况点：$(0,0)\to 0, (1,1)\to 0, (1,0)\to 1, (0,1)\to 1$。<br/>
-      请你在纸上试着画一画，你能否在 2D 平面上找到<strong>一条单一的直线</strong>，将 0 和 1 两个集合完全切分开？<br/>
+      你能否在 2D 平面上找到<strong>一条单一的直线</strong>将 0 和 1 两个集合完全切分开？<br/>
       <em>结论：不能！单神经元只能解决“线性可分”问题。下一节我们将通过引入多个神经元组合（多层感知机 MLP），见证大师们是如何突破这一死穴的！</em>
     </div>
 
