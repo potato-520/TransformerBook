@@ -496,7 +496,7 @@
     <h1>0.2 多层感知机与矩阵表达 (MLP & Matrix Representation)</h1>
     <div class="card">
       <strong>本节核心认知目标：</strong><br/>
-      掌握线性代数的几何灵魂：理解 <strong>2x2 矩阵的列向量就是基向量 $\hat{i}$ 和 $\hat{j}$ 的落脚点</strong>。彻底搞懂旋转矩阵 $R(\theta)$ 与全 1 投影矩阵 $W_1$ 的 SVD 几何分解（旋转 $\to$ 压扁 $\to$ 转回），理解神经网络如何通过矩阵提取 $x_1+x_2$ 决定性特征，并亲手操作 6 个独立交互动画看懂 XOR 的破解！
+      掌握线性代数的几何灵魂：理解 <strong>2x2 矩阵的列向量就是基向量 $\hat{i}$ 和 $\hat{j}$ 的落脚点</strong>。通过 <strong>SVD 奇异值几何分解实验室（旋转 $\to$ 压扁 $\to$ 转回）</strong>，看透 $W_1$ 是如何把 2D 空间拍扁成一条对角线的，并亲手操作 6 个独立交互动画看懂 XOR 的破解！
     </div>
 
     <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
@@ -523,188 +523,168 @@
       </p>
     </div>
 
-    <!-- ==================== 前置线性代数几何基础 ==================== -->
-    <h2>2. 🧭 前置几何心智模型：2x2 矩阵如何控制旋转与投影？</h2>
+    <!-- ==================== 2. SVD 奇异值分解实验室 ==================== -->
+    <h2>2. 🧭 矩阵几何 SVD 分解实验室：W1 拍扁空间的 3 步微观过程</h2>
     <div class="logic-box" style="background: #eff6ff; border-color: #bfdbfe; color: #1e40af;">
-      <h3 style="margin-top: 0; color: #1e3a8a;">💡 终极直觉秘密：矩阵的每一行/列，就是基向量的“新落脚点”！</h3>
+      <h3 style="margin-top: 0; color: #1e3a8a;">💡 为什么 W1 不是纯旋转矩阵？它是如何把 2D 平面拍扁成 1 维直线的？</h3>
       <p>
-        在 2D 平面上，任何一个点 $(x_1, x_2)$ 本质上都是由两个<strong>标准基向量（Basis Vectors）</strong>搭建起来的：
-        $$\vec{x} = x_1 \hat{i} + x_2 \hat{j} = x_1 \begin{bmatrix} 1 \\ 0 \end{bmatrix} + x_2 \begin{bmatrix} 0 \\ 1 \end{bmatrix}$$
-        其中 $\hat{i} = (1, 0)$ 指向右方，$\hat{j} = (0, 1)$ 指向上方。<br/>
-        当我们用一个矩阵 $W = \begin{bmatrix} w_{11} & w_{12} \\ w_{21} & w_{22} \end{bmatrix}$ 对平面进行变换时：<br/>
-        - <strong>第 1 行 $[w_{11}, w_{12}]$</strong>：就是变换后 $\hat{i}$ 降落的新坐标！<br/>
-        - <strong>第 2 行 $[w_{21}, w_{22}]$</strong>：就是变换后 $\hat{j}$ 降落的新坐标！
+        纯旋转矩阵 $R(\theta) = \begin{bmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{bmatrix}$ 保持面积不变（行列式 $\det(R)=1$）。<br/>
+        而全 1 投影矩阵 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$ 的行列式为 0。在高等代数（SVD 奇异值分解）中，它是由 <strong>3 步连贯几何动作</strong> 复合而成的：
+        $$W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix} = \underbrace{R(45^\circ)}_{\text{第 3 步：逆时针转回 45°}} \times \underbrace{\begin{bmatrix} 2 & 0 \\ 0 & 0 \end{bmatrix}}_{\text{第 2 步：垂直方向乘 0 暴力压扁}} \times \underbrace{R(-45^\circ)}_{\text{第 1 步：顺时针旋转 45°}}$$
       </p>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 18px 0;">
-      <!-- 旋转构造法 -->
-      <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px;">
-        <strong style="color: #0f172a; font-size: 14px;">1. 纯旋转矩阵 $R(\theta)$ (保真变换，行列式 = 1)</strong>
-        <p style="font-size: 12.8px; color: #475569; margin: 6px 0 0 0; line-height: 1.6;">
-          让 $\hat{i}$ 逆时针转 $\theta \to (\cos\theta, \sin\theta)$；让 $\hat{j}$ 逆时针转 $\theta \to (-\sin\theta, \cos\theta)$。<br/>
-          $$R(\theta) = \begin{bmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{bmatrix}$$
-          - 旋转 45°：$\begin{bmatrix} 0.707 & -0.707 \\ 0.707 & 0.707 \end{bmatrix}$（网格形状大小不变，只转角度）。
-        </p>
-      </div>
-
-      <!-- 投影构造法与分解 -->
-      <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px;">
-        <strong style="color: #0f172a; font-size: 14px;">2. 投影矩阵 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$ 的几何三步分解 (SVD)</strong>
-        <p style="font-size: 12.8px; color: #475569; margin: 6px 0 0 0; line-height: 1.6;">
-          为什么 $W_1$ 能把平面拍扁？它在数学上由 3 步复合而成：<br/>
-          $$W_1 = \underbrace{R(45^\circ)}_{\text{1.转回45°}} \times \underbrace{\begin{bmatrix} 2 & 0 \\ 0 & 0 \end{bmatrix}}_{\text{2.对角线拉伸2倍,垂直方向压扁至0}} \times \underbrace{R(-45^\circ)}_{\text{3.顺时针转45°}}$$
-          <strong>物理意义：</strong>它把垂直于对角线的无关差异 $(x_1 - x_2)$ 强行压扁过滤为 0，<strong>只提取并放大了决定性的总和特征 $(x_1 + x_2)$！</strong>
-        </p>
-      </div>
-    </div>
-
-    <!-- 前置互动动画：基向量追踪器 -->
+    <!-- SVD 交互动画 -->
     <div class="interactive-card">
-      <div class="interactive-title">🎮 矩阵几何基础实验室：拖动角度与基向量观察网格形变</div>
+      <div class="interactive-title">🎮 交互实验 0：W1 矩阵 SVD 奇异值分解动态实验室</div>
       
       <div class="control-panel">
-        <div class="control-group">
-          <label>旋转角度 $\theta$ (0° ~ 360°):</label>
-          <input type="range" id="basis_theta" min="0" max="360" step="5" value="45">
-          <span id="basis_theta_val" style="font-family: Consolas; font-weight: bold; width: 44px;">45°</span>
-        </div>
-        <button class="btn" onclick="presetMatrix('rotate45')">预设：标准 45° 旋转</button>
-        <button class="btn" onclick="presetMatrix('rotate25')" style="background:#64748b;">预设：标准 25° 旋转</button>
-        <button class="btn" onclick="presetMatrix('project45')" style="background:#dc2626;">预设：W1 拍扁投影线</button>
+        <button class="btn" onclick="setSVDStage(0)" id="svd_btn0">Step 0: 原始正交网格</button>
+        <button class="btn" onclick="setSVDStage(1)" id="svd_btn1" style="background:#64748b;">Step 1: 顺时针旋转 45° R(-45°)</button>
+        <button class="btn" onclick="setSVDStage(2)" id="svd_btn2" style="background:#dc2626;">Step 2: 垂直方向乘 0 暴力压扁</button>
+        <button class="btn" onclick="setSVDStage(3)" id="svd_btn3" style="background:#16a34a;">Step 3: 逆时针转回 45° (合成 W1)</button>
       </div>
 
       <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
-        <canvas id="c_basis" width="440" height="280" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
+        <canvas id="c_svd" width="460" height="280" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
         <div style="flex: 1; min-width: 240px;">
           <div class="logic-box" style="margin-top: 0; font-size: 13px;">
-            <strong>当前对应 2x2 变换矩阵：</strong>
-            <pre style="padding: 10px; font-size: 12px; margin: 8px 0;"><code id="basis_mat_disp">W = [[0.71, -0.71],
-     [0.71,  0.71]]</code></pre>
-            <strong>基向量落脚点状态：</strong><br/>
-            🔴 $\hat{i} (1,0)$ 终点: <code id="i_pos">(0.71, 0.71)</code><br/>
-            🟢 $\hat{j} (0,1)$ 终点: <code id="j_pos">(-0.71, 0.71)</code><br/><br/>
-            <strong>空间形态：</strong> <span id="basis_status" style="font-weight: bold; color: #2563eb;">2D 刚体逆时针旋转 45° (面积保真)</span>
+            <strong id="svd_title" style="font-size: 14px; color: #2563eb;">Step 0: 原始正交网格</strong><br/>
+            <pre style="padding: 8px; font-size: 12px; margin: 8px 0;"><code id="svd_formula">W = I = [[1, 0], [0, 1]]</code></pre>
+            <strong>基向量坐标：</strong><br/>
+            🔴 $\hat{i}$ 终点: <code id="svd_i">(1.00, 0.00)</code><br/>
+            🟢 $\hat{j}$ 终点: <code id="svd_j">(0.00, 1.00)</code><br/><br/>
+            <strong>微观几何解析：</strong><br/>
+            <span id="svd_desc" style="line-height: 1.6; color: #334155;">
+              原始 2D 正方形网格，红绿两个基向量彼此正交垂直。
+            </span>
           </div>
         </div>
       </div>
     </div>
 
     <script>
-      const cBasis = document.getElementById('c_basis');
-      const ctxB = cBasis.getContext('2d');
-      const bOx = cBasis.width / 2;
-      const bOy = cBasis.height / 2;
-      const bScale = 70;
+      const cSvd = document.getElementById('c_svd');
+      const ctxSvd = cSvd.getContext('2d');
+      const sOx = cSvd.width / 2;
+      const sOy = cSvd.height / 2;
+      const sScale = 65;
 
-      let bW11 = Math.cos(Math.PI / 4), bW12 = -Math.sin(Math.PI / 4);
-      let bW21 = Math.sin(Math.PI / 4), bW22 = Math.cos(Math.PI / 4);
+      let curSvdStage = 0;
 
-      function drawBasisGrid() {
-        ctxB.clearRect(0, 0, cBasis.width, cBasis.height);
+      function renderSVD(stage) {
+        curSvdStage = stage;
+        for (let i = 0; i <= 3; i++) {
+          const btn = document.getElementById(`svd_btn${i}`);
+          btn.style.background = (i === stage) ? (i === 2 ? '#dc2626' : (i === 3 ? '#16a34a' : '#2563eb')) : '#64748b';
+        }
 
-        // 绘制灰色背景原始正交网格
-        ctxB.strokeStyle = '#f1f5f9';
-        ctxB.lineWidth = 1;
+        ctxSvd.clearRect(0, 0, cSvd.width, cSvd.height);
+
+        // 背景原始灰色网格
+        ctxSvd.strokeStyle = '#f1f5f9';
+        ctxSvd.lineWidth = 1;
         for (let x = -3; x <= 3; x++) {
-          ctxB.beginPath(); ctxB.moveTo(bOx + x * bScale, 0); ctxB.lineTo(bOx + x * bScale, cBasis.height); ctxB.stroke();
+          ctxSvd.beginPath(); ctxSvd.moveTo(sOx + x * sScale, 0); ctxSvd.lineTo(sOx + x * sScale, cSvd.height); ctxSvd.stroke();
         }
         for (let y = -3; y <= 3; y++) {
-          ctxB.beginPath(); ctxB.moveTo(0, bOy + y * bScale); ctxB.lineTo(cBasis.width, bOy + y * bScale); ctxB.stroke();
-        }
-
-        // 绘制变换后的网格线
-        ctxB.strokeStyle = '#e2e8f0';
-        ctxB.lineWidth = 1;
-        for (let i = -2; i <= 2; i++) {
-          // 水平变换线
-          ctxB.beginPath();
-          const x1 = -2 * bW11 + i * bW21, y1 = -2 * bW12 + i * bW22;
-          const x2 = 2 * bW11 + i * bW21, y2 = 2 * bW12 + i * bW22;
-          ctxB.moveTo(bOx + x1 * bScale, bOy - y1 * bScale);
-          ctxB.lineTo(bOx + x2 * bScale, bOy - y2 * bScale);
-          ctxB.stroke();
-
-          // 垂直变换线
-          ctxB.beginPath();
-          const gx1 = i * bW11 - 2 * bW21, gy1 = i * bW12 - 2 * bW22;
-          const gx2 = i * bW11 + 2 * bW21, gy2 = i * bW12 + 2 * bW22;
-          ctxB.moveTo(bOx + gx1 * bScale, bOy - gy1 * bScale);
-          ctxB.lineTo(bOx + gx2 * bScale, bOy - gy2 * bScale);
-          ctxB.stroke();
+          ctxSvd.beginPath(); ctxSvd.moveTo(0, sOy + y * sScale); ctxSvd.lineTo(cSvd.width, sOy + y * sScale); ctxSvd.stroke();
         }
 
         // 坐标轴
-        ctxB.strokeStyle = '#94a3b8'; ctxB.lineWidth = 1.5;
-        ctxB.beginPath(); ctxB.moveTo(0, bOy); ctxB.lineTo(cBasis.width, bOy); ctxB.stroke();
-        ctxB.beginPath(); ctxB.moveTo(bOx, 0); ctxB.lineTo(bOx, cBasis.height); ctxB.stroke();
+        ctxSvd.strokeStyle = '#94a3b8'; ctxSvd.lineWidth = 1.5;
+        ctxSvd.beginPath(); ctxSvd.moveTo(0, sOy); ctxSvd.lineTo(cSvd.width, sOy); ctxSvd.stroke();
+        ctxSvd.beginPath(); ctxSvd.moveTo(sOx, 0); ctxSvd.lineTo(sOx, cSvd.height); ctxSvd.stroke();
 
-        const isOverlap = (Math.abs(bW11 - bW21) < 1e-3 && Math.abs(bW12 - bW22) < 1e-3);
+        let w11 = 1, w12 = 0, w21 = 0, w22 = 1;
+        const cos45 = Math.cos(Math.PI / 4), sin45 = Math.sin(Math.PI / 4);
 
-        if (isOverlap) {
-          const ix = bOx + bW11 * bScale, iy = bOy - bW12 * bScale;
-          ctxB.strokeStyle = '#9333ea'; ctxB.lineWidth = 4;
-          ctxB.beginPath(); ctxB.moveTo(bOx, bOy); ctxB.lineTo(ix, iy); ctxB.stroke();
+        const titleEl = document.getElementById('svd_title');
+        const formEl = document.getElementById('svd_formula');
+        const descEl = document.getElementById('svd_desc');
 
-          ctxB.fillStyle = '#dc2626';
-          ctxB.beginPath(); ctxB.arc(ix, iy, 5, 0, Math.PI * 2); ctxB.fill();
-          ctxB.strokeStyle = '#16a34a'; ctxB.lineWidth = 2.5;
-          ctxB.beginPath(); ctxB.arc(ix, iy, 8, 0, Math.PI * 2); ctxB.stroke();
+        if (stage === 0) {
+          w11 = 1; w12 = 0; w21 = 0; w22 = 1;
+          titleEl.innerText = "Step 0: 原始输入空间 (x1, x2)";
+          formEl.innerText = "W = [[1, 0], [0, 1]] (单位阵)";
+          descEl.innerText = "原始 2D 正方形网格，红绿两个基向量彼此正交垂直。";
+        } else if (stage === 1) {
+          // 顺时针旋转 45°: R(-45°) = [[cos, sin], [-sin, cos]]
+          w11 = cos45; w12 = sin45;
+          w21 = -sin45; w22 = cos45;
+          titleEl.innerText = "Step 1: 顺时针旋转 45° [R(-45°)]";
+          formEl.innerText = "R(-45°) = [[0.71, 0.71],\n          [-0.71, 0.71]]";
+          descEl.innerText = "把对角线方向 (x1+x2) 顺时针旋转对齐到水平 X 轴，副对角线 (x1-x2) 对齐到垂直 Y 轴。面积无损保真。";
+        } else if (stage === 2) {
+          // 垂直压扁至 0，水平乘 2: [[2, 0], [0, 0]] * R(-45°) = [[1.414, 1.414], [0, 0]]
+          w11 = 2 * cos45; w12 = 2 * sin45;
+          w21 = 0; w22 = 0;
+          titleEl.innerText = "Step 2: 垂直方向乘 0 暴力压扁！";
+          formEl.innerText = "Σ * R(-45°) = [[1.41, 1.41],\n              [0.00, 0.00]]";
+          descEl.innerText = "💥 关键降维瞬间：垂直方向所有分量被强制乘 0 抹平！整个 2D 平面被压扁成了一条水平一维直线！";
+        } else if (stage === 3) {
+          // 逆时针转回 45°: R(45°) * [[1.414, 1.414], [0, 0]] = [[1, 1], [1, 1]]
+          w11 = 1; w12 = 1;
+          w21 = 1; w22 = 1;
+          titleEl.innerText = "Step 3: 逆时针转回 45° [最终合成 W1]";
+          formEl.innerText = "W1 = [[1, 1],\n      [1, 1]]";
+          descEl.innerText = "把压扁后的一维直线逆时针转回 45° 对角线方向！两个基向量同时降落在 (1,1)。整个 2D 平面被投影在 z2=z1 上！";
+        }
 
-          ctxB.fillStyle = '#9333ea';
-          ctxB.font = 'bold 12px Segoe UI';
-          ctxB.fillText('î 与 ĵ 均重合降落在 (1,1) !', ix + 12, iy - 6);
+        document.getElementById('svd_i').innerText = `(${w11.toFixed(2)}, ${w12.toFixed(2)})`;
+        document.getElementById('svd_j').innerText = `(${w21.toFixed(2)}, ${w22.toFixed(2)})`;
+
+        // 绘制变换网格
+        ctxSvd.strokeStyle = (stage === 2 || stage === 3) ? '#9333ea' : '#cbd5e1';
+        ctxSvd.lineWidth = (stage === 2 || stage === 3) ? 2 : 1;
+        for (let i = -2; i <= 2; i++) {
+          ctxSvd.beginPath();
+          const x1 = -2 * w11 + i * w21, y1 = -2 * w12 + i * w22;
+          const x2 = 2 * w11 + i * w21, y2 = 2 * w12 + i * w22;
+          ctxSvd.moveTo(sOx + x1 * sScale, sOy - y1 * sScale);
+          ctxSvd.lineTo(sOx + x2 * sScale, sOy - y2 * sScale);
+          ctxSvd.stroke();
+        }
+
+        // 绘制基向量箭头
+        if (stage === 3) {
+          // 重合双色
+          const ix = sOx + w11 * sScale, iy = sOy - w12 * sScale;
+          ctxSvd.strokeStyle = '#9333ea'; ctxSvd.lineWidth = 4;
+          ctxSvd.beginPath(); ctxSvd.moveTo(sOx, sOy); ctxSvd.lineTo(ix, iy); ctxSvd.stroke();
+          ctxSvd.fillStyle = '#dc2626'; ctxSvd.beginPath(); ctxSvd.arc(ix, iy, 5, 0, Math.PI * 2); ctxSvd.fill();
+          ctxSvd.strokeStyle = '#16a34a'; ctxSvd.lineWidth = 2.5; ctxSvd.beginPath(); ctxSvd.arc(ix, iy, 8, 0, Math.PI * 2); ctxSvd.stroke();
+          ctxSvd.fillStyle = '#9333ea'; ctxSvd.font = 'bold 12px Segoe UI';
+          ctxSvd.fillText('î 与 ĵ 均降落在 (1,1) !', ix + 12, iy - 6);
         } else {
-          ctxB.strokeStyle = '#dc2626'; ctxB.fillStyle = '#dc2626'; ctxB.lineWidth = 3;
-          ctxB.beginPath(); ctxB.moveTo(bOx, bOy);
-          const ix = bOx + bW11 * bScale, iy = bOy - bW12 * bScale;
-          ctxB.lineTo(ix, iy); ctxB.stroke();
-          ctxB.beginPath(); ctxB.arc(ix, iy, 4, 0, Math.PI * 2); ctxB.fill();
-          ctxB.font = 'bold 12px Segoe UI';
-          ctxB.fillText('î (1,0)', ix + 6, iy - 4);
+          // 红色 i
+          ctxSvd.strokeStyle = '#dc2626'; ctxSvd.fillStyle = '#dc2626'; ctxSvd.lineWidth = 3;
+          ctxSvd.beginPath(); ctxSvd.moveTo(sOx, sOy);
+          const ix = sOx + w11 * sScale, iy = sOy - w12 * sScale;
+          ctxSvd.lineTo(ix, iy); ctxSvd.stroke();
+          ctxSvd.beginPath(); ctxSvd.arc(ix, iy, 4, 0, Math.PI * 2); ctxSvd.fill();
+          ctxSvd.font = 'bold 12px Segoe UI';
+          ctxSvd.fillText('î (1,0)', ix + 6, iy - 4);
 
-          ctxB.strokeStyle = '#16a34a'; ctxB.fillStyle = '#16a34a'; ctxB.lineWidth = 3;
-          ctxB.beginPath(); ctxB.moveTo(bOx, bOy);
-          const jx = bOx + bW21 * bScale, jy = bOy - bW22 * bScale;
-          ctxB.lineTo(jx, jy); ctxB.stroke();
-          ctxB.beginPath(); ctxB.arc(jx, jy, 4, 0, Math.PI * 2); ctxB.fill();
-          ctxB.fillText('ĵ (0,1)', jx + 6, jy - 4);
-        }
-
-        document.getElementById('basis_mat_disp').innerText = `W = [[${bW11.toFixed(2)}, ${bW12.toFixed(2)}],\n     [${bW21.toFixed(2)}, ${bW22.toFixed(2)}]]`;
-        document.getElementById('i_pos').innerText = `(${bW11.toFixed(2)}, ${bW12.toFixed(2)})`;
-        document.getElementById('j_pos').innerText = `(${bW21.toFixed(2)}, ${bW22.toFixed(2)})`;
-      }
-
-      function updateThetaSlider() {
-        const deg = parseFloat(document.getElementById('basis_theta').value);
-        document.getElementById('basis_theta_val').innerText = deg + '°';
-        const rad = deg * Math.PI / 180;
-        bW11 = Math.cos(rad); bW12 = -Math.sin(rad);
-        bW21 = Math.sin(rad); bW22 = Math.cos(rad);
-        document.getElementById('basis_status').innerText = `2D 刚体旋转 ${deg}° (网格无畸变)`;
-        document.getElementById('basis_status').style.color = "#2563eb";
-        drawBasisGrid();
-      }
-
-      function presetMatrix(type) {
-        if (type === 'rotate45') {
-          document.getElementById('basis_theta').value = 45;
-          updateThetaSlider();
-        } else if (type === 'rotate25') {
-          document.getElementById('basis_theta').value = 25;
-          updateThetaSlider();
-        } else if (type === 'project45') {
-          bW11 = 1.0; bW12 = 1.0;
-          bW21 = 1.0; bW22 = 1.0;
-          document.getElementById('basis_status').innerText = "⚠️ 两个基向量重合！2D 平面塌陷为 45° 投影直线 (det=0)";
-          document.getElementById('basis_status').style.color = "#dc2626";
-          drawBasisGrid();
+          // 绿色 j
+          if (w21 !== 0 || w22 !== 0) {
+            ctxSvd.strokeStyle = '#16a34a'; ctxSvd.fillStyle = '#16a34a'; ctxSvd.lineWidth = 3;
+            ctxSvd.beginPath(); ctxSvd.moveTo(sOx, sOy);
+            const jx = sOx + w21 * sScale, jy = sOy - w22 * sScale;
+            ctxSvd.lineTo(jx, jy); ctxSvd.stroke();
+            ctxSvd.beginPath(); ctxSvd.arc(jx, jy, 4, 0, Math.PI * 2); ctxSvd.fill();
+            ctxSvd.fillText('ĵ (0,1)', jx + 6, jy - 4);
+          } else {
+            // j 被压扁为 0
+            ctxSvd.fillStyle = '#16a34a';
+            ctxSvd.beginPath(); ctxSvd.arc(sOx, sOy, 6, 0, Math.PI * 2); ctxSvd.fill();
+            ctxSvd.fillText('ĵ 被压扁在原点 (0,0)', sOx + 8, sOy + 18);
+          }
         }
       }
 
-      document.getElementById('basis_theta').addEventListener('input', updateThetaSlider);
-      drawBasisGrid();
+      function setSVDStage(st) { renderSVD(st); }
+      renderSVD(0);
     </script>
 
     <!-- ==================== 3. 5 步微观物理过程 ==================== -->
@@ -756,7 +736,7 @@
     <!-- Step 2 -->
     <h3>第二步 · 矩阵线性仿射变换 $Z = X W_1 + B_1$：【细拆两阶段】旋转投影与偏置平移</h3>
     <div class="card" style="background: #f8fafc; border: 1px solid #cbd5e1;">
-      <strong>结合上一节的基向量知识，现在完全能看懂这里的两步了：</strong>
+      <strong>结合上一节的 SVD 分解知识，现在完全能看懂这里的两步了：</strong>
       <ol style="margin-bottom: 0;">
         <li>
           <strong>阶段 2.1 · 纯矩阵乘法 $X \cdot W_1$（对角线塌陷投影）：</strong><br/>
