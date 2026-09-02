@@ -496,7 +496,7 @@
     <h1>0.2 多层感知机与矩阵表达 (MLP & Matrix Representation)</h1>
     <div class="card">
       <strong>本节核心认知目标：</strong><br/>
-      掌握线性代数的几何灵魂：理解 <strong>2x2 矩阵的列向量就是基向量 $\hat{i}$ 和 $\hat{j}$ 的落脚点</strong>。通过 <strong>SVD 奇异值几何分解实验室（逆时针旋转 45° $\to$ 垂直方向压扁至 0 $\to$ 合成最终 $W_1$）</strong>，看透 $W_1$ 是如何把 2D 空间拍扁成一条对角线的，并亲手操作 6 个独立交互动画看懂 XOR 的破解！
+      掌握线性代数的几何灵魂：理解 <strong>2x2 矩阵的列向量就是基向量 $\hat{i}$ 和 $\hat{j}$ 的落脚点</strong>。彻底搞清楚 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$ 的来源与其 <strong>SVD 奇异值严格数学分解（旋转 $\to$ 压扁 $\to$ 合成）</strong>，理解神经网络如何通过矩阵拍扁空间提取 $x_1+x_2$ 决定性特征，并亲手操作 6 个独立交互动画看懂 XOR 的破解！
     </div>
 
     <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
@@ -523,13 +523,52 @@
       </p>
     </div>
 
-    <!-- ==================== 2. SVD 奇异值分解实验室 ==================== -->
-    <h2>2. 🧭 矩阵几何 SVD 分解实验室：W1 拍扁空间的 3 步微观过程</h2>
-    <div class="logic-box" style="background: #eff6ff; border-color: #bfdbfe; color: #1e40af;">
-      <h3 style="margin-top: 0; color: #1e3a8a;">💡 为什么 W1 不是纯旋转矩阵？它是如何把 2D 平面拍扁成 1 维直线的？</h3>
+    <!-- ==================== 2. 数学公式与 SVD 几何分解 ==================== -->
+    <h2>2. 🧭 数学公式与几何微观拆解：W1 矩阵从何而来？如何拍扁空间？</h2>
+    
+    <!-- W1 的定义与来源 -->
+    <div class="logic-box" style="background: #f8fafc; border-color: #cbd5e1; color: #1e293b;">
+      <h3 style="margin-top: 0; color: #0f172a;">📌 1. 隐藏层权重矩阵 $W_1$ 是从哪里来的？</h3>
       <p>
-        纯旋转矩阵 $R(\theta) = \begin{bmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{bmatrix}$ 保持面积不变（行列式 $\det(R)=1$）。<br/>
-        而全 1 投影矩阵 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$ 的行列式为 0。在几何分解中，它是由 <strong>逆时针旋转 45° 确定方向 $\to$ 垂直方向乘 0 强力压扁 $\to$ 沿对角线拉伸</strong> 复合而成的！
+        解决 XOR 问题时，我们为隐藏层配置了 <strong>2 个神经元</strong>：<br/>
+        - 第 1 个神经元计算加权和：$z_1 = 1.0 \cdot x_1 + 1.0 \cdot x_2$<br/>
+        - 第 2 个神经元计算加权和：$z_2 = 1.0 \cdot x_1 + 1.0 \cdot x_2$<br/>
+        把这两个方程打包成矩阵向量乘法，就诞生了权重矩阵 $W_1$：
+        $$\begin{bmatrix} z_1 & z_2 \end{bmatrix} = \begin{bmatrix} x_1 & x_2 \end{bmatrix} \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix} \iff Z = X \cdot W_1, \quad \text{其中 } W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$$
+      </p>
+    </div>
+
+    <!-- 旋转矩阵 vs 投影矩阵 -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 18px 0;">
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px;">
+        <strong style="color: #1e40af; font-size: 14px;">🔵 纯旋转矩阵 $R(\theta)$（保真变换，$\det=1$）</strong>
+        <p style="font-size: 12.8px; color: #1e3a8a; margin: 6px 0 0 0; line-height: 1.6;">
+          $$R(\theta) = \begin{bmatrix} \cos\theta & \sin\theta \\ -\sin\theta & \cos\theta \end{bmatrix}$$
+          - 逆时针转 45°：$R(45^\circ) = \begin{bmatrix} \frac{\sqrt{2}}{2} & \frac{\sqrt{2}}{2} \\ -\frac{\sqrt{2}}{2} & \frac{\sqrt{2}}{2} \end{bmatrix} \approx \begin{bmatrix} 0.71 & 0.71 \\ -0.71 & 0.71 \end{bmatrix}$<br/>
+          - <strong>特点</strong>：网格只旋转角度，面积和垂直正交性完全不变。
+        </p>
+      </div>
+
+      <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 8px; padding: 14px;">
+        <strong style="color: #9d174d; font-size: 14px;">🔴 全 1 投影矩阵 $W_1$（降维拍扁，$\det=0$）</strong>
+        <p style="font-size: 12.8px; color: #831843; margin: 6px 0 0 0; line-height: 1.6;">
+          $$W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}, \quad \det(W_1) = 1\times 1 - 1\times 1 = 0$$
+          - <strong>为什么会拍扁？</strong><br/>
+          代数计算：$[x_1, x_2] W_1 = (x_1 + x_2) \cdot [1, 1]$。<br/>
+          所有输出点全部被锁死在 $[1, 1]$ 这一根斜线上，2D 平面瞬间塌陷！
+        </p>
+      </div>
+    </div>
+
+    <!-- SVD 分解数学证明 -->
+    <div class="card" style="background: #faf5ff; border: 1px solid #e9d5ff;">
+      <h3 style="margin-top: 0; color: #581c87;">🔬 2. $W_1$ 的 SVD 奇异值严格数学分解公式</h3>
+      <p style="font-size: 13.5px; color: #4c1d95; line-height: 1.7;">
+        在高等代数中，$W_1$ 可以严格分解为 <strong>「旋转 $\to$ 沿轴压扁拉伸 $\to$ 逆时针转回」</strong> 3 个基本矩阵的连乘：
+        $$W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix} = \underbrace{\begin{bmatrix} \frac{\sqrt{2}}{2} & -\frac{\sqrt{2}}{2} \\ \frac{\sqrt{2}}{2} & \frac{\sqrt{2}}{2} \end{bmatrix}}_{\text{Step 3: 逆转回对角线 } U} \times \underbrace{\begin{bmatrix} 2 & 0 \\ 0 & 0 \end{bmatrix}}_{\text{Step 2: 垂直压扁至 0, 水平乘 2 } \Sigma} \times \underbrace{\begin{bmatrix} \frac{\sqrt{2}}{2} & \frac{\sqrt{2}}{2} \\ -\frac{\sqrt{2}}{2} & \frac{\sqrt{2}}{2} \end{bmatrix}}_{\text{Step 1: 逆时针转 45° } V^T}$$
+        <strong>代数乘法验证：</strong><br/>
+        1. 先算中间两项：$\Sigma V^T = \begin{bmatrix} 2 & 0 \\ 0 & 0 \end{bmatrix} \begin{bmatrix} \frac{\sqrt{2}}{2} & \frac{\sqrt{2}}{2} \\ -\frac{\sqrt{2}}{2} & \frac{\sqrt{2}}{2} \end{bmatrix} = \begin{bmatrix} \sqrt{2} & \sqrt{2} \\ 0 & 0 \end{bmatrix}$ (垂直分量全部乘 0 抹平！)<br/>
+        2. 再乘左矩阵：$U (\Sigma V^T) = \begin{bmatrix} \frac{\sqrt{2}}{2} & -\frac{\sqrt{2}}{2} \\ \frac{\sqrt{2}}{2} & \frac{\sqrt{2}}{2} \end{bmatrix} \begin{bmatrix} \sqrt{2} & \sqrt{2} \\ 0 & 0 \end{bmatrix} = \begin{bmatrix} \frac{\sqrt{2}}{2} \cdot \sqrt{2} & \frac{\sqrt{2}}{2} \cdot \sqrt{2} \\ \frac{\sqrt{2}}{2} \cdot \sqrt{2} & \frac{\sqrt{2}}{2} \cdot \sqrt{2} \end{bmatrix} = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix} = W_1$！
       </p>
     </div>
 
@@ -615,7 +654,7 @@
           formEl.innerText = "R(45°) = [[0.71,  0.71],\n          [-0.71, 0.71]]";
           descEl.innerText = "把红色基向量 î 逆时针转 45° 对齐到 (0.71, 0.71) 对角线上，网格面积无损保真。";
         } else if (stage === 2) {
-          // 垂直方向压扁至 0 (即只保留对角线方向分量)
+          // 垂直方向压扁至 0 (只保留对角线方向分量)
           w11 = cos45; w12 = sin45;
           w21 = 0; w22 = 0;
           titleEl.innerText = "Step 2: 垂直方向乘 0 暴力压扁！";
@@ -1221,7 +1260,7 @@ print("\n最终分类标签:\n", (Y_pred >= 0).astype(int))
       <strong>思考题：如果去除非线性激活函数，堆叠 100 层 MLP 会怎样？</strong><br/>
       如果 $H_1 = X W_1, H_2 = H_1 W_2, \dots, Y = H_{99} W_{100}$。<br/>
       根据矩阵乘法结合律：$Y = X (W_1 W_2 \dots W_{100}) = X W_{total}$。<br/>
-      <em>结论：没有激活函数，堆叠 100 层的深层网络在数学上等价于单层单神经元！这 pytest 是下一节“激活函数”要解开的核心之谜！</em>
+      <em>结论：没有激活函数，堆叠 100 层的深层网络在数学上等价于单层单神经元！这正是下一节“激活函数”要解开的核心之谜！</em>
     </div>
 
 
