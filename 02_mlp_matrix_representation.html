@@ -496,7 +496,7 @@
     <h1>0.2 多层感知机与矩阵表达 (MLP & Matrix Representation)</h1>
     <div class="card">
       <strong>本节核心认知目标：</strong><br/>
-      彻底拆解“空间扭曲（Space Warping）”的每一个微观物理步骤：从输入信号 $\to$ 仿射线性旋转 $\to$ ReLU 二极管单向截断折叠 $\to$ 隐层特征空间重组 $\to$ 输出层线性切割，不留任何跳步与认知死角！
+      通过 <strong>5 个独立的可调节交互动画</strong>，微观拆解“空间扭曲（Space Warping）”的每一步物理细节：从原始输入 $\to$ 矩阵仿射旋转 $\to$ ReLU 二极管截断 $\to$ 隐层特征重构 $\to$ 输出层单刀切割，亲手调节参数见证 XOR 世纪难题的破解！
     </div>
 
     <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
@@ -523,299 +523,461 @@
       </p>
     </div>
 
-    <h2>2. 🔬 显微镜级拆解：空间折叠的 5 步微观物理过程</h2>
+    <h2>2. 🔬 显微镜级拆解：5 步空间折叠与独立交互动画</h2>
+
+    <!-- ==================== Step 1 ==================== -->
+    <h3>第一步 · 初始输入状态 $(x_1, x_2)$：对角线对峙，单线无解</h3>
     <p>
-      为什么单神经元做不到的事情，加了一个隐藏层就能解开？“空间扭曲”到底是在哪一步发生的？<br/>
-      让我们把黑盒彻底打开，像单步调试汇编指令一样，一步步看清这 5 个连续的微观阶段：
-    </p>
-
-    <div style="display: flex; flex-direction: column; gap: 20px; margin: 24px 0;">
-      <!-- Step 1 -->
-      <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 5px solid #64748b; border-radius: 8px; padding: 16px 20px;">
-        <div style="font-weight: 800; font-size: 15px; color: #0f172a; margin-bottom: 6px;">
-          第一步 · 初始输入状态 $(x_1, x_2)$：对角线对峙，单线无解
-        </div>
-        <p style="font-size: 13.5px; color: #334155; margin: 0 0 10px 0;">
-          在原始输入空间中，4 个样本点的位置是固定的：
-          🟢 $(0,0)$ 为 0，🔴 $(1,0)$ 为 1，🔴 $(0,1)$ 为 1，🟢 $(1,1)$ 为 0。<br/>
-          <strong>物理死穴：</strong>两组同类点正好处于对角线两端，任何笔直的直线切下去，都只能把空间分成两半，永远无法把处于同一对角线的两个红点单独圈出来。
-        </p>
-      </div>
-
-      <!-- Step 2 -->
-      <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 5px solid #2563eb; border-radius: 8px; padding: 16px 20px;">
-        <div style="font-weight: 800; font-size: 15px; color: #1e40af; margin-bottom: 6px;">
-          第二步 · 矩阵线性仿射变换 $Z = X W_1 + B_1$：倾斜旋转，依然共线
-        </div>
-        <p style="font-size: 13.5px; color: #334155; margin: 0 0 10px 0;">
-          隐藏层拥有 2 个神经元，设置权重矩阵 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$，偏置 $B_1 = [-0.5, -1.5]$。<br/>
-          这一步做纯粹的矩阵乘法：
-          $$z_1 = x_1 + x_2 - 0.5, \quad z_2 = x_1 + x_2 - 1.5$$
-          <strong>⚠️ 关键认知：</strong>此时 $z_1$ 和 $z_2$ 只是对坐标轴进行了 45 度旋转和平移。<br/>
-          4 个点算出来的 $(z_1, z_2)$ 分别是：$(-0.5, -1.5)$、$ (0.5, -0.5)$、$ (0.5, -0.5)$、$ (1.5, 0.5)$。<br/>
-          <strong>如果不加激活函数，这 4 个点在 $(z_1, z_2)$ 空间中依然排成一条死板的直线，依然 100% 无法线性分类！</strong>
-        </p>
-      </div>
-
-      <!-- Step 3 -->
-      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-left: 5px solid #dc2626; border-radius: 8px; padding: 16px 20px;">
-        <div style="font-weight: 800; font-size: 15px; color: #991b1b; margin-bottom: 6px;">
-          第三步 · 激活函数的“二极管单向截断”：折叠发生的决定性瞬间！
-        </div>
-        <p style="font-size: 13.5px; color: #334155; margin: 0 0 10px 0;">
-          这是整个神经网络最神奇的核心时刻——<strong>非线性激活函数 $\text{ReLU}(z) = \max(0, z)$ 生效！</strong><br/>
-          它的物理行为就像一个理想二极管：<strong>正电压无损通过，负电压强制死死夹在 0V！</strong>
-        </p>
-        <ul style="font-size: 13.5px; color: #334155; margin-bottom: 0;">
-          <li>对于点 $(0,0)$：$z_1=-0.5 < 0 \implies \text{ReLU} = 0.0$；$z_2=-1.5 < 0 \implies \text{ReLU} = 0.0$。</li>
-          <li>对于点 $(1,0)$ 和 $(0,1)$：$z_1=+0.5 > 0 \implies \text{ReLU} = 0.5$；<strong>$z_2=-0.5 < 0 \implies \text{被强制截断归零为 } 0.0$！</strong></li>
-          <li>对于点 $(1,1)$：$z_1=+1.5 > 0 \implies \text{ReLU} = 1.5$；$z_2=+0.5 > 0 \implies \text{ReLU} = 0.5$。</li>
-        </ul>
-        <div class="logic-box" style="margin-top: 10px; margin-bottom: 0; background: #fff1f2; border-color: #fecdd3; color: #9f1239;">
-          <strong>💡 空间折纸的真相：</strong>因为负数坐标被 ReLU 一刀切平在 0 轴上，原本在平面的负半轴被<strong>硬生生沿着坐标轴折叠了 90 度</strong>！
-        </div>
-      </div>
-
-      <!-- Step 4 -->
-      <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 5px solid #16a34a; border-radius: 8px; padding: 16px 20px;">
-        <div style="font-weight: 800; font-size: 15px; color: #166534; margin-bottom: 6px;">
-          第四步 · 隐层特征新空间 $(h_1, h_2)$：点位重构与空间重合
-        </div>
-        <p style="font-size: 13.5px; color: #334155; margin: 0 0 10px 0;">
-          经过折叠后，我们在隐藏层输出的新坐标轴 $(h_1, h_2)$ 上重新观察这 4 个点：
-        </p>
-        <table style="font-size: 13px; margin: 10px 0;">
-          <thead>
-            <tr>
-              <th>原始样本</th>
-              <th>真实标签</th>
-              <th>隐藏层输出 $h_1$</th>
-              <th>隐藏层输出 $h_2$</th>
-              <th>新空间坐标 $(h_1, h_2)$</th>
-              <th>几何重构结果</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>$(0, 0)$</td>
-              <td>🟢 0</td>
-              <td>0.0</td>
-              <td>0.0</td>
-              <td><strong>(0.0, 0.0)</strong></td>
-              <td>收缩在原点</td>
-            </tr>
-            <tr>
-              <td>$(1, 0)$</td>
-              <td>🔴 1</td>
-              <td>0.5</td>
-              <td>0.0</td>
-              <td><strong>(0.5, 0.0)</strong></td>
-              <td rowspan="2" style="background:#fef2f2; color:#dc2626; font-weight:bold;">两个红点在空间折叠后，坐标完全重合！</td>
-            </tr>
-            <tr>
-              <td>$(0, 1)$</td>
-              <td>🔴 1</td>
-              <td>0.5</td>
-              <td>0.0</td>
-              <td><strong>(0.5, 0.0)</strong></td>
-            </tr>
-            <tr>
-              <td>$(1, 1)$</td>
-              <td>🟢 0</td>
-              <td>1.5</td>
-              <td>0.5</td>
-              <td><strong>(1.5, 0.5)</strong></td>
-              <td>拉伸到右上角</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Step 5 -->
-      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 5px solid #15803d; border-radius: 8px; padding: 16px 20px;">
-        <div style="font-weight: 800; font-size: 15px; color: #166534; margin-bottom: 6px;">
-          第五步 · 输出层神经元单刀切分：降维打击，完美通关
-        </div>
-        <p style="font-size: 13.5px; color: #334155; margin: 0 0 8px 0;">
-          此时，输出层神经元登场。它看到的不再是对角线纠缠的 $(x_1, x_2)$，而是被折叠整齐的 $(h_1, h_2)$！<br/>
-          输出权重设为 $W_2 = \begin{bmatrix} 1.0 \\ -2.0 \end{bmatrix}$，输出判决公式：
-          $$y = 1.0 \times h_1 - 2.0 \times h_2$$
-          让我们逐代入算一下输出电压：
-        </p>
-        <ul style="font-size: 13px; color: #334155; margin-bottom: 0;">
-          <li>🟢 样本 $(0,0) \implies y = 1.0(0.0) - 2.0(0.0) = \mathbf{0.0}$ （判为 0，正确！）</li>
-          <li>🔴 样本 $(1,0) \implies y = 1.0(0.5) - 2.0(0.0) = \mathbf{0.5}$ （判为 1，正确！）</li>
-          <li>🔴 样本 $(0,1) \implies y = 1.0(0.5) - 2.0(0.0) = \mathbf{0.5}$ （判为 1，正确！）</li>
-          <li>🟢 样本 $(1,1) \implies y = 1.0(1.5) - 2.0(0.5) = 1.5 - 1.0 = \mathbf{0.5} \dots$ 只要设定阈值（或微调权重使 $y = h_1 - 2h_2 - 0.2$），**一条普通直线即可将红色（0.5）与绿色（0.0）100% 完美分开！**</li>
-        </ul>
-      </div>
-    </div>
-
-    <h2>3. 黑盒 JS 可交互动画：5 步空间折叠连续演练台</h2>
-    <p>
-      拖动下方滑块或点击步骤按钮，观察 4 个点在坐标系中的**连续位移与折叠过程**！
+      在原始 2D 输入空间中，4 个样本点固定在单位正方形的 4 个顶点上：
+      🟢 $(0,0)$ 为 0，🔴 $(1,0)$ 为 1，🔴 $(0,1)$ 为 1，🟢 $(1,1)$ 为 0。<br/>
+      <strong>请尝试拖动下方滑块调节决策直线的权重与偏置，亲手验证为什么单条直线永远无法达到 100% 准确率：</strong>
     </p>
 
     <div class="interactive-card">
-      <div class="interactive-title">🎮 空间折叠 5 步微观演示台</div>
+      <div class="interactive-title">🎮 交互实验 1：单神经元在原始 XOR 空间的绝望尝试</div>
       
       <div class="control-panel">
-        <button class="btn" onclick="goToStep(1)" id="sbtn_1">Step 1: 原始输入空间</button>
-        <button class="btn" onclick="goToStep(2)" id="sbtn_2" style="background:#64748b;">Step 2: 线性矩阵旋转</button>
-        <button class="btn" onclick="goToStep(3)" id="sbtn_3" style="background:#64748b;">Step 3: ReLU 截断对折</button>
-        <button class="btn" onclick="goToStep(4)" id="sbtn_4" style="background:#64748b;">Step 4: 隐层坐标重构</button>
-        <button class="btn" onclick="goToStep(5)" id="sbtn_5" style="background:#64748b;">Step 5: 输出层一刀切开</button>
+        <div class="control-group">
+          <label>w1 (X 权重):</label>
+          <input type="range" id="s1_w1" min="-3" max="3" step="0.2" value="1.0">
+          <span id="s1_w1_val" style="font-family: Consolas; font-weight: bold; width: 32px;">1.0</span>
+        </div>
+        <div class="control-group">
+          <label>w2 (Y 权重):</label>
+          <input type="range" id="s1_w2" min="-3" max="3" step="0.2" value="1.0">
+          <span id="s1_w2_val" style="font-family: Consolas; font-weight: bold; width: 32px;">1.0</span>
+        </div>
+        <div class="control-group">
+          <label>b (偏置):</label>
+          <input type="range" id="s1_b" min="-3" max="3" step="0.2" value="-0.5">
+          <span id="s1_b_val" style="font-family: Consolas; font-weight: bold; width: 36px;">-0.5</span>
+        </div>
       </div>
 
       <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
-        <canvas id="warpCanvas" width="500" height="300" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
-        <div style="flex: 1; min-width: 240px;">
+        <canvas id="c_step1" width="440" height="240" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
+        <div style="flex: 1; min-width: 220px;">
           <div class="logic-box" style="margin-top: 0;">
-            <strong id="step_name" style="font-size: 15px; color: #2563eb;">Step 1: 原始输入空间 (x1, x2)</strong><br/><br/>
-            <strong>当前微观状态：</strong><br/>
-            <span id="step_desc" style="font-size: 13.5px; color: #334155; line-height: 1.6;">
-              4 个点分布在单位正方形的 4 个顶点上。(0,0) 与 (1,1) 为绿，(1,0) 与 (0,1) 为红。两条对角线交叉，单直线无法分割。
-            </span>
+            <strong>当前分类准确率：</strong><br/>
+            <span id="s1_acc" style="font-size: 20px; font-weight: 800; color: #dc2626;">75% (3/4)</span><br/><br/>
+            <strong>判决直线方程：</strong><br/>
+            <code id="s1_eq" style="font-size: 13px;">1.0*x1 + 1.0*x2 - 0.5 = 0</code><br/><br/>
+            <span style="font-size: 12.5px; color: #64748b;">无论如何微调，总有至少 1 个对角点被划入错误区域！</span>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- ==================== Step 2 ==================== -->
+    <h3>第二步 · 矩阵线性仿射变换 $Z = X W_1 + B_1$：倾斜旋转，依然共线</h3>
+    <p>
+      隐藏层拥有 2 个神经元，设置权重矩阵 $W_1$ 与偏置 $B_1$，计算内部加权电压 $z_1 = x_1 + x_2 + b_{11}, z_2 = x_1 + x_2 + b_{12}$。<br/>
+      <strong>调节下方偏置滑块，观察 4 个点在 $(z_1, z_2)$ 空间中的移动——注意看连接它们的紫色直线！</strong>
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 交互实验 2：纯线性矩阵变换后的“共线死锁”</div>
+      
+      <div class="control-panel">
+        <div class="control-group">
+          <label>神经元 1 偏置 b11:</label>
+          <input type="range" id="s2_b1" min="-2.5" max="1.5" step="0.1" value="-0.5">
+          <span id="s2_b1_val" style="font-family: Consolas; font-weight: bold; width: 36px;">-0.5</span>
+        </div>
+        <div class="control-group">
+          <label>神经元 2 偏置 b12:</label>
+          <input type="range" id="s2_b2" min="-2.5" max="1.5" step="0.1" value="-1.5">
+          <span id="s2_b2_val" style="font-family: Consolas; font-weight: bold; width: 36px;">-1.5</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="c_step2" width="440" height="240" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
+        <div style="flex: 1; min-width: 220px;">
+          <div class="logic-box" style="margin-top: 0; background: #faf5ff; border-color: #e9d5ff; color: #581c87;">
+            <strong>几何共线性结论：</strong><br/>
+            <span style="font-size: 13.5px;">点仍然牢牢排在同一根直线上！<br/>没有非线性折叠，纯矩阵乘法只是在平移旋转坐标系，<strong>依然无法解开 XOR</strong>！</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== Step 3 ==================== -->
+    <h3>第三步 · 激活函数二极管单向截断：折叠发生的决定性瞬间！</h3>
+    <p>
+      非线性激活函数 $\text{ReLU}(z) = \max(0, z)$ 生效：<strong>正数原样通过，所有负数被强行推平到 0 轴！</strong><br/>
+      <strong>切换下方激活函数类型，观察负数区域是如何被一刀折弯按压在坐标轴上的：</strong>
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 交互实验 3：激活函数的单向截断折叠模拟器</div>
+      
+      <div class="control-panel">
+        <button class="btn" onclick="setActType('relu')" id="act_relu">ReLU: max(0, z) [对折 90 度]</button>
+        <button class="btn" onclick="setActType('none')" id="act_none" style="background:#64748b;">无激活: z [平直不折叠]</button>
+        <button class="btn" onclick="setActType('leaky')" id="act_leaky" style="background:#64748b;">LeakyReLU: max(0.1z, z)</button>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="c_step3" width="440" height="240" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
+        <div style="flex: 1; min-width: 220px;">
+          <div class="logic-box" style="margin-top: 0; background: #fff1f2; border-color: #fecdd3; color: #9f1239;">
+            <strong id="act_title">ReLU 截断折叠生效中</strong><br/>
+            <span id="act_desc" style="font-size: 13px;">负半轴被尺子死死按压在 0 轴上，平整的欧几里得平面被对折，原本线性的对角线在此处断开并弯折！</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== Step 4 ==================== -->
+    <h3>第四步 · 隐层特征新空间 $(h_1, h_2)$：点位重构与空间重合</h3>
+    <p>
+      在折叠后的全新坐标系 $(h_1, h_2)$ 中，原本对角线的两个红点 $(1,0)$ 与 $(0,1)$ 因为负半轴被截断，<strong>精确重叠在同一坐标 $(0.5, 0.0)$！</strong><br/>
+      <strong>微调下方隐藏层神经元参数，观察两个红点是如何合并重合的：</strong>
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 交互实验 4：隐层特征空间中的点位折叠重构</div>
+      
+      <div class="control-panel">
+        <div class="control-group">
+          <label>神经元 1 阈值偏移:</label>
+          <input type="range" id="s4_t1" min="-1.0" max="0.0" step="0.1" value="-0.5">
+          <span id="s4_t1_val" style="font-family: Consolas; font-weight: bold; width: 36px;">-0.5</span>
+        </div>
+        <div class="control-group">
+          <label>神经元 2 阈值偏移:</label>
+          <input type="range" id="s4_t2" min="-2.0" max="-1.0" step="0.1" value="-1.5">
+          <span id="s4_t2_val" style="font-family: Consolas; font-weight: bold; width: 36px;">-1.5</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="c_step4" width="440" height="240" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
+        <div style="flex: 1; min-width: 220px;">
+          <div class="logic-box" style="margin-top: 0;">
+            <strong>红点重合状态：</strong><br/>
+            <span id="s4_overlap" style="font-weight: bold; color: #dc2626;">(1,0) 与 (0,1) 完全重合在 (0.5, 0)</span><br/><br/>
+            <strong>绿点分布：</strong><br/>
+            <span style="font-size: 13px; color: #166534;">(0,0) 停在原点，(1,1) 拉伸至 (1.5, 0.5)。两类点被完全拉开！</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== Step 5 ==================== -->
+    <h3>第五步 · 输出层神经元单刀切分：完美分类通关！</h3>
+    <p>
+      输出层接收折叠后的 $(h_1, h_2)$，执行简单线性判决 $y = w_{o1} h_1 + w_{o2} h_2 + b_o$。<br/>
+      <strong>调节输出层权重与偏置，亲手画出那条终结 XOR 难题的绿色决策直线，达成 100% 准确率！</strong>
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 交互实验 5：输出层一刀切开（100% 准确率达成）</div>
+      
+      <div class="control-panel">
+        <div class="control-group">
+          <label>wo1 (h1 权重):</label>
+          <input type="range" id="s5_wo1" min="-3" max="3" step="0.2" value="1.0">
+          <span id="s5_wo1_val" style="font-family: Consolas; font-weight: bold; width: 32px;">1.0</span>
+        </div>
+        <div class="control-group">
+          <label>wo2 (h2 权重):</label>
+          <input type="range" id="s5_wo2" min="-4" max="2" step="0.2" value="-2.0">
+          <span id="s5_wo2_val" style="font-family: Consolas; font-weight: bold; width: 36px;">-2.0</span>
+        </div>
+        <div class="control-group">
+          <label>bo (偏置):</label>
+          <input type="range" id="s5_bo" min="-1" max="1" step="0.05" value="-0.25">
+          <span id="s5_bo_val" style="font-family: Consolas; font-weight: bold; width: 40px;">-0.25</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="c_step5" width="440" height="240" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
+        <div style="flex: 1; min-width: 220px;">
+          <div class="logic-box" style="margin-top: 0; background: #f0fdf4; border-color: #86efac; color: #166534;">
+            <strong>输出层分类准确率：</strong><br/>
+            <span id="s5_acc" style="font-size: 22px; font-weight: 800; color: #16a34a;">100% (4/4 完美分类!)</span><br/><br/>
+            <strong>判决方程：</strong><br/>
+            <code id="s5_eq" style="font-size: 13px;">1.0*h1 - 2.0*h2 - 0.25 = 0</code><br/><br/>
+            <span>🎉 恭喜！XOR 问题在数学和几何上被彻底攻克！</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 个 Canvas 的控制脚本 -->
     <script>
-      const wCanvas = document.getElementById('warpCanvas');
-      const wCtx = wCanvas.getContext('2d');
-      let currentStep = 1;
-
-      function renderStep(step) {
-        currentStep = step;
-        for (let i = 1; i <= 5; i++) {
-          const b = document.getElementById(`sbtn_${i}`);
-          b.style.background = (i === step) ? '#2563eb' : '#64748b';
-        }
-
-        const nameEl = document.getElementById('step_name');
-        const descEl = document.getElementById('step_desc');
-
-        wCtx.clearRect(0, 0, wCanvas.width, wCanvas.height);
-        const originX = 70, originY = 230, unit = 130;
-
-        // 绘制通用坐标轴
-        wCtx.strokeStyle = '#94a3b8';
-        wCtx.lineWidth = 1.5;
-        wCtx.beginPath();
-        wCtx.moveTo(originX, originY); wCtx.lineTo(originX + 380, originY);
-        wCtx.moveTo(originX, originY); wCtx.lineTo(originX, 30);
-        wCtx.stroke();
-
-        wCtx.font = 'bold 12px Consolas';
-        wCtx.fillStyle = '#64748b';
-
-        if (step === 1) {
-          nameEl.innerText = "Step 1: 原始输入空间 (x1, x2)";
-          descEl.innerText = "4 个点分布在单位正方形的 4 个顶点上。(0,0) 与 (1,1) 为绿，(1,0) 与 (0,1) 为红。两条对角线交叉，单直线无法分割。";
-          wCtx.fillText('x1', originX + 370, originY + 18);
-          wCtx.fillText('x2', originX - 25, 40);
-
-          drawPoint(originX, originY, 0, '(0,0): 0');
-          drawPoint(originX + unit, originY, 1, '(1,0): 1');
-          drawPoint(originX, originY - unit, 1, '(0,1): 1');
-          drawPoint(originX + unit, originY - unit, 0, '(1,1): 0');
-
-          // 虚线尝试切分
-          wCtx.strokeStyle = '#ef4444'; wCtx.setLineDash([4, 4]); wCtx.lineWidth = 1.5;
-          wCtx.beginPath(); wCtx.moveTo(originX - 20, originY - unit*0.5); wCtx.lineTo(originX + unit*1.5, originY - unit*0.5); wCtx.stroke();
-          wCtx.setLineDash([]);
-          wCtx.fillStyle = '#dc2626'; wCtx.fillText('单线必切错', originX + unit*0.8, originY - unit*0.55);
-        } else if (step === 2) {
-          nameEl.innerText = "Step 2: 线性矩阵仿射旋转 Z = X*W1 + B1";
-          descEl.innerText = "矩阵计算 z1=x1+x2-0.5, z2=x1+x2-1.5。虽然坐标被平移旋转，但 4 个点依然排在同一直线上（共线），没有非线性折叠依然无法分类！";
-          wCtx.fillText('z1', originX + 370, originY + 18);
-          wCtx.fillText('z2', originX - 25, 40);
-
-          // 负半轴虚线
-          wCtx.strokeStyle = '#cbd5e1'; wCtx.setLineDash([3, 3]);
-          wCtx.beginPath(); wCtx.moveTo(originX - 40, originY); wCtx.lineTo(originX, originY); wCtx.stroke();
-          wCtx.beginPath(); wCtx.moveTo(originX, originY + 40); wCtx.lineTo(originX, originY); wCtx.stroke();
-          wCtx.setLineDash([]);
-
-          drawPoint(originX - 30, originY + 50, 0, '(0,0) -> z=[-0.5, -1.5]');
-          drawPoint(originX + 45, originY + 20, 1, '(1,0)&(0,1) -> z=[0.5, -0.5]');
-          drawPoint(originX + 130, originY - 40, 0, '(1,1) -> z=[1.5, 0.5]');
-
-          // 连线展示共线性
-          wCtx.strokeStyle = '#9333ea'; wCtx.lineWidth = 1.5;
-          wCtx.beginPath(); wCtx.moveTo(originX - 40, originY + 55); wCtx.lineTo(originX + 150, originY - 50); wCtx.stroke();
-          wCtx.fillStyle = '#9333ea'; wCtx.fillText('没有激活函数，点依然共线！', originX + 10, originY + 80);
-        } else if (step === 3) {
-          nameEl.innerText = "Step 3: ReLU 截断对折 (二极管单向导通)";
-          descEl.innerText = "ReLU(z)=max(0,z) 生效！负数坐标被尺子强行推平压到 0 轴上。负半轴空间被折叠 90 度，空间不再是平直的！";
-          wCtx.fillText('h1 = max(0, z1)', originX + 280, originY + 18);
-          wCtx.fillText('h2 = max(0, z2)', originX - 25, 40);
-
-          // 绘制折叠箭头提示
-          wCtx.strokeStyle = '#dc2626'; wCtx.lineWidth = 2;
-          wCtx.beginPath(); wCtx.moveTo(originX - 30, originY + 40); wCtx.lineTo(originX, originY); wCtx.stroke();
-          wCtx.fillStyle = '#dc2626'; wCtx.fillText('负值强行折叠推平到 0 轴 ->', originX + 10, originY + 40);
-
-          drawPoint(originX, originY, 0, '(0,0) 折叠压在 (0, 0)');
-          drawPoint(originX + 55, originY, 1, '(1,0)&(0,1) 折叠压在 (0.5, 0)');
-          drawPoint(originX + 160, originY - 55, 0, '(1,1) 保留在 (1.5, 0.5)');
-        } else if (step === 4) {
-          nameEl.innerText = "Step 4: 隐层新坐标系 (h1, h2) 重构";
-          descEl.innerText = "在折叠后的全新特征空间中：两个红点重合在 (0.5, 0)，绿点在 (0,0) 和 (1.5, 0.5)。原本纠缠的对角线被成功拆解开！";
-          wCtx.fillText('h1', originX + 370, originY + 18);
-          wCtx.fillText('h2', originX - 25, 40);
-
-          drawPoint(originX, originY, 0, '(0,0) → (0.0, 0.0)');
-          drawPoint(originX + unit*0.5, originY, 1, '(1,0)&(0,1) 重合在 (0.5, 0.0)');
-          drawPoint(originX + unit*1.5, originY - unit*0.5, 0, '(1,1) → (1.5, 0.5)');
-        } else if (step === 5) {
-          nameEl.innerText = "Step 5: 输出层一刀切开 (线性可分)";
-          descEl.innerText = "输出层神经元画出直线 y = h1 - 2*h2 - 0.25 = 0，红点在上方，绿点在下方，以 100% 精度完美切割 XOR！";
-          wCtx.fillText('h1', originX + 370, originY + 18);
-          wCtx.fillText('h2', originX - 25, 40);
-
-          drawPoint(originX, originY, 0, '(0,0) -> 输出 0');
-          drawPoint(originX + unit*0.5, originY, 1, '(1,0)&(0,1) -> 输出 1');
-          drawPoint(originX + unit*1.5, originY - unit*0.5, 0, '(1,1) -> 输出 0');
-
-          // 分割线
-          wCtx.strokeStyle = '#16a34a'; wCtx.lineWidth = 3;
-          wCtx.beginPath();
-          wCtx.moveTo(originX + unit*0.25, originY);
-          wCtx.lineTo(originX + unit*2.2, originY - unit*0.975);
-          wCtx.stroke();
-          wCtx.fillStyle = '#16a34a';
-          wCtx.fillText('输出层决策直线：h1 - 2*h2 - 0.25 = 0', originX + unit*0.4, originY - unit*0.8);
-        }
+      // 辅助绘图函数
+      function drawBaseAxes(ctx, w, h, ox, oy, xLabel, yLabel) {
+        ctx.clearRect(0, 0, w, h);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(ox, oy); ctx.lineTo(w - 20, oy);
+        ctx.moveTo(ox, oy); ctx.lineTo(ox, 20);
+        ctx.stroke();
+        ctx.font = 'bold 11px Consolas';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(xLabel, w - 30, oy + 16);
+        ctx.fillText(yLabel, ox - 20, 25);
       }
 
-      function drawPoint(x, y, label, text) {
-        wCtx.beginPath();
+      function drawPointMarker(ctx, x, y, label, text) {
+        ctx.beginPath();
         if (label === 0) {
-          wCtx.fillStyle = '#16a34a';
-          wCtx.fillRect(x - 7, y - 7, 14, 14);
-          wCtx.strokeStyle = '#0f172a';
-          wCtx.lineWidth = 1.5;
-          wCtx.strokeRect(x - 7, y - 7, 14, 14);
+          ctx.fillStyle = '#16a34a';
+          ctx.fillRect(x - 6, y - 6, 12, 12);
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(x - 6, y - 6, 12, 12);
         } else {
-          wCtx.fillStyle = '#dc2626';
-          wCtx.arc(x, y, 7, 0, Math.PI * 2);
-          wCtx.fill();
-          wCtx.strokeStyle = '#0f172a';
-          wCtx.lineWidth = 1.5;
-          wCtx.stroke();
+          ctx.fillStyle = '#dc2626';
+          ctx.arc(x, y, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
         }
-        wCtx.fillStyle = '#0f172a';
-        wCtx.font = 'bold 11px Segoe UI';
-        wCtx.fillText(text, x + 10, y + 4);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '11px Segoe UI';
+        ctx.fillText(text, x + 8, y + 4);
       }
 
-      function goToStep(s) { renderStep(s); }
-      renderStep(1);
+      // ================= Step 1 渲染 =================
+      const c1 = document.getElementById('c_step1'), ctx1 = c1.getContext('2d');
+      function updateStep1() {
+        const w1 = parseFloat(document.getElementById('s1_w1').value);
+        const w2 = parseFloat(document.getElementById('s1_w2').value);
+        const b = parseFloat(document.getElementById('s1_b').value);
+        document.getElementById('s1_w1_val').innerText = w1.toFixed(1);
+        document.getElementById('s1_w2_val').innerText = w2.toFixed(1);
+        document.getElementById('s1_b_val').innerText = b.toFixed(1);
+        document.getElementById('s1_eq').innerText = `${w1.toFixed(1)}*x1 + ${w2.toFixed(1)}*x2 + ${b.toFixed(1)} = 0`;
+
+        const ox = 50, oy = 190, scale = 110;
+        drawBaseAxes(ctx1, c1.width, c1.height, ox, oy, 'x1', 'x2');
+
+        const pts = [
+          {x: 0, y: 0, l: 0, n: '(0,0):0'},
+          {x: 1, y: 0, l: 1, n: '(1,0):1'},
+          {x: 0, y: 1, l: 1, n: '(0,1):1'},
+          {x: 1, y: 1, l: 0, n: '(1,1):0'}
+        ];
+
+        let correct = 0;
+        pts.forEach(p => {
+          const score = p.x * w1 + p.y * w2 + b;
+          const pred = score >= 0 ? 1 : 0;
+          if (pred === p.l) correct++;
+          const px = ox + p.x * scale, py = oy - p.y * scale;
+          drawPointMarker(ctx1, px, py, p.l, p.n);
+        });
+
+        const accEl = document.getElementById('s1_acc');
+        accEl.innerText = `${(correct / 4 * 100).toFixed(0)}% (${correct}/4)`;
+        accEl.style.color = (correct === 4) ? '#16a34a' : '#dc2626';
+
+        // 绘制决策线
+        if (Math.abs(w2) > 1e-4) {
+          const yAt0 = -b / w2;
+          const yAt1_5 = (-b - w1 * 1.5) / w2;
+          ctx1.strokeStyle = '#2563eb'; ctx1.lineWidth = 2;
+          ctx1.beginPath();
+          ctx1.moveTo(ox, oy - yAt0 * scale);
+          ctx1.lineTo(ox + 1.5 * scale, oy - yAt1_5 * scale);
+          ctx1.stroke();
+        }
+      }
+      document.getElementById('s1_w1').addEventListener('input', updateStep1);
+      document.getElementById('s1_w2').addEventListener('input', updateStep1);
+      document.getElementById('s1_b').addEventListener('input', updateStep1);
+      updateStep1();
+
+      // ================= Step 2 渲染 =================
+      const c2 = document.getElementById('c_step2'), ctx2 = c2.getContext('2d');
+      function updateStep2() {
+        const b1 = parseFloat(document.getElementById('s2_b1').value);
+        const b2 = parseFloat(document.getElementById('s2_b2').value);
+        document.getElementById('s2_b1_val').innerText = b1.toFixed(1);
+        document.getElementById('s2_b2_val').innerText = b2.toFixed(1);
+
+        const ox = 140, oy = 140, scale = 50;
+        drawBaseAxes(ctx2, c2.width, c2.height, ox, oy, 'z1', 'z2');
+
+        const pts = [
+          {x: 0, y: 0, l: 0, n: '(0,0)'},
+          {x: 1, y: 0, l: 1, n: '(1,0)'},
+          {x: 0, y: 1, l: 1, n: '(0,1)'},
+          {x: 1, y: 1, l: 0, n: '(1,1)'}
+        ];
+
+        const zPts = pts.map(p => {
+          const z1 = p.x + p.y + b1;
+          const z2 = p.x + p.y + b2;
+          return {z1, z2, l: p.l, n: `${p.n} -> [${z1.toFixed(1)}, ${z2.toFixed(1)}]`};
+        });
+
+        // 画共线直线
+        ctx2.strokeStyle = '#9333ea'; ctx2.lineWidth = 1.5; ctx2.setLineDash([3, 3]);
+        ctx2.beginPath();
+        ctx2.moveTo(ox + (zPts[0].z1 - 0.5) * scale, oy - (zPts[0].z2 - 0.5) * scale);
+        ctx2.lineTo(ox + (zPts[3].z1 + 0.5) * scale, oy - (zPts[3].z2 + 0.5) * scale);
+        ctx2.stroke();
+        ctx2.setLineDash([]);
+
+        zPts.forEach(p => {
+          drawPointMarker(ctx2, ox + p.z1 * scale, oy - p.z2 * scale, p.l, p.n);
+        });
+      }
+      document.getElementById('s2_b1').addEventListener('input', updateStep2);
+      document.getElementById('s2_b2').addEventListener('input', updateStep2);
+      updateStep2();
+
+      // ================= Step 3 渲染 =================
+      const c3 = document.getElementById('c_step3'), ctx3 = c3.getContext('2d');
+      let actType = 'relu';
+      function setActType(type) {
+        actType = type;
+        ['relu', 'none', 'leaky'].forEach(t => {
+          document.getElementById(`act_${t}`).style.background = (t === type) ? '#2563eb' : '#64748b';
+        });
+        const tEl = document.getElementById('act_title');
+        const dEl = document.getElementById('act_desc');
+        if (type === 'relu') {
+          tEl.innerText = "ReLU 截断对折生效中";
+          dEl.innerText = "负半轴被强力截断归零，平整空间沿 0 轴对折 90 度，空间弯折！";
+        } else if (type === 'none') {
+          tEl.innerText = "无激活 (纯线性)";
+          dEl.innerText = "空间完全平直，点依然在一条直线上，完全无法分类！";
+        } else {
+          tEl.innerText = "LeakyReLU (微弱导通)";
+          dEl.innerText = "负半轴斜率变平缓 (0.1)，折线但未完全合并。";
+        }
+        updateStep3();
+      }
+
+      function updateStep3() {
+        const ox = 60, oy = 180, scale = 70;
+        drawBaseAxes(ctx3, c3.width, c3.height, ox, oy, 'h1', 'h2');
+
+        function act(v) {
+          if (actType === 'relu') return Math.max(0, v);
+          if (actType === 'none') return v;
+          return v >= 0 ? v : 0.1 * v;
+        }
+
+        const rawZ = [
+          {z1: -0.5, z2: -1.5, l: 0, n: '(0,0)'},
+          {z1: 0.5, z2: -0.5, l: 1, n: '(1,0)'},
+          {z1: 0.5, z2: -0.5, l: 1, n: '(0,1)'},
+          {z1: 1.5, z2: 0.5, l: 0, n: '(1,1)'}
+        ];
+
+        rawZ.forEach(p => {
+          const h1 = act(p.z1), h2 = act(p.z2);
+          drawPointMarker(ctx3, ox + h1 * scale, oy - h2 * scale, p.l, `${p.n} -> [${h1.toFixed(1)}, ${h2.toFixed(1)}]`);
+        });
+      }
+      setActType('relu');
+
+      // ================= Step 4 渲染 =================
+      const c4 = document.getElementById('c_step4'), ctx4 = c4.getContext('2d');
+      function updateStep4() {
+        const t1 = parseFloat(document.getElementById('s4_t1').value);
+        const t2 = parseFloat(document.getElementById('s4_t2').value);
+        document.getElementById('s4_t1_val').innerText = t1.toFixed(1);
+        document.getElementById('s4_t2_val').innerText = t2.toFixed(1);
+
+        const ox = 60, oy = 180, scale = 70;
+        drawBaseAxes(ctx4, c4.width, c4.height, ox, oy, 'h1', 'h2');
+
+        const pts = [
+          {x: 0, y: 0, l: 0, n: '(0,0)'},
+          {x: 1, y: 0, l: 1, n: '(1,0)'},
+          {x: 0, y: 1, l: 1, n: '(0,1)'},
+          {x: 1, y: 1, l: 0, n: '(1,1)'}
+        ];
+
+        const hPts = pts.map(p => {
+          const h1 = Math.max(0, p.x + p.y + t1);
+          const h2 = Math.max(0, p.x + p.y + t2);
+          return {h1, h2, l: p.l, n: p.n};
+        });
+
+        // 检查红点是否重合
+        const redDist = Math.hypot(hPts[1].h1 - hPts[2].h1, hPts[1].h2 - hPts[2].h2);
+        document.getElementById('s4_overlap').innerText = (redDist < 1e-4) ? `(1,0) 与 (0,1) 精确重合在 (${hPts[1].h1.toFixed(1)}, ${hPts[1].h2.toFixed(1)})` : `红点未重合 (距离: ${redDist.toFixed(2)})`;
+
+        drawPointMarker(ctx4, ox + hPts[0].h1 * scale, oy - hPts[0].h2 * scale, 0, `(0,0) -> [${hPts[0].h1.toFixed(1)}, ${hPts[0].h2.toFixed(1)}]`);
+        drawPointMarker(ctx4, ox + hPts[1].h1 * scale, oy - hPts[1].h2 * scale, 1, `(1,0)&(0,1) -> [${hPts[1].h1.toFixed(1)}, ${hPts[1].h2.toFixed(1)}]`);
+        drawPointMarker(ctx4, ox + hPts[3].h1 * scale, oy - hPts[3].h2 * scale, 0, `(1,1) -> [${hPts[3].h1.toFixed(1)}, ${hPts[3].h2.toFixed(1)}]`);
+      }
+      document.getElementById('s4_t1').addEventListener('input', updateStep4);
+      document.getElementById('s4_t2').addEventListener('input', updateStep4);
+      updateStep4();
+
+      // ================= Step 5 渲染 =================
+      const c5 = document.getElementById('c_step5'), ctx5 = c5.getContext('2d');
+      function updateStep5() {
+        const wo1 = parseFloat(document.getElementById('s5_wo1').value);
+        const wo2 = parseFloat(document.getElementById('s5_wo2').value);
+        const bo = parseFloat(document.getElementById('s5_bo').value);
+        document.getElementById('s5_wo1_val').innerText = wo1.toFixed(1);
+        document.getElementById('s5_wo2_val').innerText = wo2.toFixed(1);
+        document.getElementById('s5_bo_val').innerText = bo.toFixed(2);
+        document.getElementById('s5_eq').innerText = `${wo1.toFixed(1)}*h1 + ${wo2.toFixed(1)}*h2 + ${bo.toFixed(2)} = 0`;
+
+        const ox = 60, oy = 180, scale = 75;
+        drawBaseAxes(ctx5, c5.width, c5.height, ox, oy, 'h1', 'h2');
+
+        const hPts = [
+          {h1: 0.0, h2: 0.0, l: 0, n: '(0,0) [0.0, 0.0]'},
+          {h1: 0.5, h2: 0.0, l: 1, n: '(1,0)&(0,1) [0.5, 0.0]'},
+          {h1: 1.5, h2: 0.5, l: 0, n: '(1,1) [1.5, 0.5]'}
+        ];
+
+        let correct = 0;
+        // 4个样本实际得分判断
+        const all4 = [
+          {h1: 0.0, h2: 0.0, l: 0},
+          {h1: 0.5, h2: 0.0, l: 1},
+          {h1: 0.5, h2: 0.0, l: 1},
+          {h1: 1.5, h2: 0.5, l: 0}
+        ];
+        all4.forEach(p => {
+          const score = p.h1 * wo1 + p.h2 * wo2 + bo;
+          const pred = score >= 0 ? 1 : 0;
+          if (pred === p.l) correct++;
+        });
+
+        const accEl = document.getElementById('s5_acc');
+        accEl.innerText = `${(correct / 4 * 100).toFixed(0)}% (${correct}/4 ${correct === 4 ? '🎉 完美分类!' : ''})`;
+        accEl.style.color = (correct === 4) ? '#16a34a' : '#dc2626';
+
+        // 绘制决策线
+        if (Math.abs(wo2) > 1e-4) {
+          const h2At0 = -bo / wo2;
+          const h2At2 = (-bo - wo1 * 2.2) / wo2;
+          ctx5.strokeStyle = '#16a34a'; ctx5.lineWidth = 3;
+          ctx5.beginPath();
+          ctx5.moveTo(ox, oy - h2At0 * scale);
+          ctx5.lineTo(ox + 2.2 * scale, oy - h2At2 * scale);
+          ctx5.stroke();
+        }
+
+        hPts.forEach(p => {
+          drawPointMarker(ctx5, ox + p.h1 * scale, oy - p.h2 * scale, p.l, p.n);
+        });
+      }
+      document.getElementById('s5_wo1').addEventListener('input', updateStep5);
+      document.getElementById('s5_wo2').addEventListener('input', updateStep5);
+      document.getElementById('s5_bo').addEventListener('input', updateStep5);
+      updateStep5();
     </script>
 
-    <h2>4. 输入与输出 Tensor Shape 变换追踪</h2>
+    <h2>3. 输入与输出 Tensor Shape 变换追踪</h2>
     <div class="logic-box">
       <strong>全链路矩阵形状轨迹 (以 Batch Size $B=4$, 输入维度 2, 隐藏维度 2, 输出维度 1 为例)：</strong><br/>
       1. 输入张量 $X$：<span class="shape-badge">Shape: [4, 2]</span> (4 个 XOR 样本点)<br/>
@@ -825,20 +987,18 @@
       5. 最终输出：$Y = H \cdot W_2 + B_2 \implies$ <span class="shape-badge">Shape: [4, 1]</span>
     </div>
 
-    <h2>5. Python / NumPy 极简 XOR 网络验证代码</h2>
+    <h2>4. Python / NumPy 极简 XOR 网络验证代码</h2>
     <pre><code class="language-python">import numpy as np
 
 class XORNet:
     def __init__(self):
-        # 隐藏层参数: 2 个神经元分别对应 x1+x2-0.5 和 x1+x2-1.5
         self.W1 = np.array([[1.0, 1.0],
                             [1.0, 1.0]])
         self.B1 = np.array([-0.5, -1.5])
         
-        # 输出层参数: h1 - 2*h2
         self.W2 = np.array([[1.0],
                             [-2.0]])
-        self.B2 = np.array([0.0])
+        self.B2 = np.array([-0.25])
 
     def forward(self, X):
         # 1. 空间折叠 (隐藏层)
@@ -857,18 +1017,18 @@ Y_pred, H_space = xor_net.forward(X)
 
 print("原始输入 X:\n", X)
 print("\n隐藏层折叠后的新坐标 H (h1, h2):\n", H_space)
-print("\n输出层判决 Y_pred (>=0.5 为 1, <0.5 为 0):\n", Y_pred)
-# 输出: (0,0)->0.0, (1,0)->0.5, (0,1)->0.5, (1,1)->0.0 (完美解出 XOR!)
+print("\n输出层判决分值 Y_pred (>=0 为 1, <0 为 0):\n", Y_pred)
+print("\n最终分类标签:\n", (Y_pred >= 0).astype(int))
 </code></pre>
 
-    <h2>6. 打开黑盒：真实工程细节 (GEMM 与 Tensor Core)</h2>
+    <h2>5. 打开黑盒：真实工程细节 (GEMM 与 Tensor Core)</h2>
     <div class="card">
       <strong>为什么整个 AI 工业界都为 GEMM 痴狂？</strong><br/>
       现代 NVIDIA GPU（如 H100/A100）的 <strong>Tensor Core</strong> 硬件加速单元，其本质就是一条超高吞吐的专用矩阵乘流水线！<br/>
       它通过硬件脉动阵列（Systolic Array），在一个时钟周期内就能同时完成 $16 \times 16$ 矩阵的高精度乘累加，计算密度比传统标量 CPU 提升了整整上千倍！
     </div>
 
-    <h2>7. 动手实验与思考题</h2>
+    <h2>6. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：如果去除非线性激活函数，堆叠 100 层 MLP 会怎样？</strong><br/>
       如果 $H_1 = X W_1, H_2 = H_1 W_2, \dots, Y = H_{99} W_{100}$。<br/>
