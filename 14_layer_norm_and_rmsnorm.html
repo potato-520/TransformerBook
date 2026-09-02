@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3.3 LayerNorm 与 RMSNorm - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 3.3 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="13_causal_mask.html">← 3.2 Causal Mask 因果掩码</a> | 
+        <a href="15_residual_and_ffn.html">3.4 残差连接与 FFN →</a>
+      </div>
+    </div>
+
+    
+    <h1>3.3 LayerNorm 与 RMSNorm (Layer Normalization & RMSNorm)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>理解为什么深层 Transformer 必须使用归一化层，掌握 LayerNorm 与 BatchNorm 的维度本质区别，以及现代大模型全面采用 RMSNorm 的计算性能收益。
+    </div>
+
+    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
+    <p>
+      在堆叠了几十层（如 LLaMA-3 堆叠了 32~80 层）Block 后，浮点矩阵乘法会产生剧烈的<strong>数值膨胀与特征分布漂移（Internal Covariate Shift）</strong>，导致底层梯度数值爆炸或溢出。<br/>
+      <strong>归一化层（Normalization）</strong>就像电路系统中的<strong>“稳压器/AGC 自动增益控制”</strong>，将每个 Token 的特征向量强制拉回均值为 0、方差为 1（或固定均方根）的稳定基准。
+    </p>
+
+    <h2>2. LayerNorm vs BatchNorm 维度差异</h2>
+    <div class="logic-box">
+      <strong>切片维度的根本不同：</strong>
+      <ul>
+        <li><strong>BatchNorm（图像经典）</strong>：跨 Batch 跨序列计算统计量。缺点：依赖 Batch 尺寸，动态序列长度时极难维护。</li>
+        <li><strong>LayerNorm（NLP/Transformer 标准）</strong>：<strong>在单个样本、单个 Token 自身的全部特征通道 $D$ 上做归一化！</strong> 完全独立于其他 Batch 和其他时序位置。</li>
+      </ul>
+    </div>
+
+    <h2>3. 从 LayerNorm 到更高效的 RMSNorm</h2>
+    <p>
+      标准 LayerNorm 计算公式（包含均值中心化与方差归一化）：
+      $$\text{LN}(x) = \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} \odot \gamma + \beta$$
+      现代大模型（LLaMA / Mistral / Qwen）发现：<strong>均值中心化操作（$x - \mu$）对网络稳定性毫无贡献，真正起作用的是方差缩放！</strong><br/>
+      因此全面升级为去除均值计算、运算速度提升 10%~50% 的 <strong>RMSNorm (Root Mean Square Normalization)</strong>：
+      $$\text{RMS}(x) = \sqrt{\frac{1}{D} \sum_{i=1}^D x_i^2 + \epsilon}, \quad \text{RMSNorm}(x) = \frac{x}{\text{RMS}(x)} \odot \gamma$$
+    </p>
+
+    <h2>4. 黑盒 JS 可交互动画：3D 张量切片归一化立方体</h2>
+    <p>
+      调节下方滑块输入任意均值偏置与方差波动，观察 RMSNorm 是如何将波动的特征向量平稳约束在单位尺度内的！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 RMSNorm 特征稳压器动态测试台</div>
+      
+      <div class="control-panel">
+        <div class="control-group">
+          <label>输入特征偏移度:</label>
+          <input type="range" id="norm_offset" min="-5" max="5" step="0.5" value="3.0">
+          <span id="offset_val" style="font-family: Consolas; font-weight: bold; width: 32px;">3.0</span>
+        </div>
+        <div class="control-group">
+          <label>可学习缩放权重 $\gamma$:</label>
+          <input type="range" id="gamma_val_slider" min="0.5" max="2.0" step="0.1" value="1.0">
+          <span id="gamma_disp" style="font-family: Consolas; font-weight: bold; width: 32px;">1.0</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="normCanvas" width="480" height="280" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
+        <div style="flex: 1; min-width: 240px;">
+          <div class="logic-box" style="margin-top: 0;">
+            <strong>统计量测量：</strong><br/>
+            输入 RMS: <span id="input_rms" style="font-family: Consolas; font-weight: bold; color: #dc2626;">3.67</span><br/>
+            输出 RMS: <span id="output_rms" style="font-family: Consolas; font-weight: bold; color: #166534;">1.00</span><br/><br/>
+            <strong>物理效果：</strong><br/>
+            无论输入特征数值放大多少倍，经过 RMS 缩放后，输出向量的模长被精确恒定在基准值 $\sqrt{D} \cdot \gamma$。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const nCanvas = document.getElementById('normCanvas');
+      const nCtx = nCanvas.getContext('2d');
+
+      function drawNorm() {
+        const offset = parseFloat(document.getElementById('norm_offset').value);
+        const gamma = parseFloat(document.getElementById('gamma_val_slider').value);
+
+        document.getElementById('offset_val').innerText = offset.toFixed(1);
+        document.getElementById('gamma_disp').innerText = gamma.toFixed(1);
+
+        const rawFeatures = [1.0 + offset, -2.0 + offset, 3.0 + offset, -1.0 + offset, 4.0 + offset];
+        const D = rawFeatures.length;
+
+        const sumSq = rawFeatures.reduce((acc, v) => acc + v * v, 0);
+        const rms = Math.sqrt(sumSq / D + 1e-6);
+
+        const normFeatures = rawFeatures.map(v => (v / rms) * gamma);
+
+        document.getElementById('input_rms').innerText = rms.toFixed(2);
+        const outRms = Math.sqrt(normFeatures.reduce((acc, v) => acc + v * v, 0) / D);
+        document.getElementById('output_rms').innerText = outRms.toFixed(2);
+
+        nCtx.clearRect(0, 0, nCanvas.width, nCanvas.height);
+        const barW = 32;
+        const spacing = 70;
+        const startX = 60;
+        const midY = 140;
+
+        nCtx.strokeStyle = '#cbd5e1';
+        nCtx.beginPath();
+        nCtx.moveTo(20, midY); nCtx.lineTo(nCanvas.width - 20, midY);
+        nCtx.stroke();
+
+        for (let i = 0; i < D; i++) {
+          const x = startX + i * spacing;
+
+          const hRaw = rawFeatures[i] * 12;
+          nCtx.strokeStyle = '#f87171';
+          nCtx.lineWidth = 1.5;
+          nCtx.setLineDash([3, 3]);
+          nCtx.strokeRect(x - 16, midY - (hRaw > 0 ? hRaw : 0), 14, Math.abs(hRaw));
+          nCtx.setLineDash([]);
+
+          const hNorm = normFeatures[i] * 35;
+          nCtx.fillStyle = '#2563eb';
+          nCtx.fillRect(x + 2, midY - (hNorm > 0 ? hNorm : 0), 14, Math.abs(hNorm));
+        }
+      }
+
+      document.getElementById('norm_offset').addEventListener('input', drawNorm);
+      document.getElementById('gamma_val_slider').addEventListener('input', drawNorm);
+      drawNorm();
+    </script>
+
+    <h2>5. Python / NumPy 极简 RMSNorm 实现</h2>
+    <pre><code class="language-python">import numpy as np
+
+class RMSNorm:
+    def __init__(self, dim: int, eps: float = 1e-6):
+        self.eps = eps
+        self.gamma = np.ones(dim, dtype=np.float32)
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        rms = np.sqrt(np.mean(x ** 2, axis=-1, keepdims=True) + self.eps)
+        return (x / rms) * self.gamma
+
+x_test = np.array([[10.0, -20.0, 30.0],
+                   [1.0,   2.0,   3.0]], dtype=np.float32)
+
+rmsnorm = RMSNorm(dim=3)
+out = rmsnorm.forward(x_test)
+print("RMSNorm 输出张量:\n", np.round(out, 4))
+</code></pre>
+
+    <h2>6. 打开黑盒：真实工程细节 (为什么现代 LLM 全部 Pre-LN？)</h2>
+    <div class="card">
+      <strong>Pre-LN vs Post-LN 架构革命：</strong><br/>
+      经典 2017 Transformer 采用 <strong>Post-LN</strong>（$X_{out} = \text{LN}(X + \text{SubLayer}(X))$），在深层网络中梯度极易在未归一化的残差主线上发散，需要漫长而小心翼翼的 Warmup 预热调参。<br/>
+      现代大模型一律采用 <strong>Pre-LN</strong>（$X_{out} = X + \text{SubLayer}(\text{RMSNorm}(X))$），让残差主线保持恒等畅通，实现了即插即训的极高数值稳定性！
+    </div>
+
+    <h2>7. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      RMSNorm 与 LayerNorm 相比，少算了哪两个量？为什么这能在 GPU 硬件加速上带来显著收益？<br/>
+      <em>提示：少算了“均值 $\mu$”和“偏置 $\beta$”。在 CUDA 核心中，这意味着少做了一次全 Warp 跨线程规约求和（Reduction），显著降低了线程同步与寄存器压力。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="13_causal_mask.html">← 上一节：3.2 Causal Mask 因果掩码</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="15_residual_and_ffn.html">下一节：3.4 残差连接与 FFN →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

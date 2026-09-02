@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>1.3 传统序列模型瓶颈 - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 1.3 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="07_embedding_lookup.html">← 1.2 Embedding 嵌入层</a> | 
+        <a href="09_qkv_intuition.html">2.1 Q/K/V 检索物理直觉 →</a>
+      </div>
+    </div>
+
+    
+    <h1>1.3 传统序列模型瓶颈 (RNN/LSTM vs. Attention)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>从计算架构与硬件并行视角，对比 RNN、LSTM、CNN 与 Transformer 自注意力机制的根本差异，深刻理解为什么“循环时序依赖”被现代大模型彻底淘汰。
+    </div>
+
+    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
+    <p>
+      自然语言是一串有先后顺序的时序序列。在 Transformer 诞生前（2017 年之前），学术界主要使用<strong>循环神经网络（RNN / LSTM / GRU）</strong>来处理文本。<br/>
+      然而，RNN 存在两个无法逾越的<strong>致命工程死穴</strong>：
+    </p>
+    <ol>
+      <li><span class="mark-danger">串行时钟依赖（无法硬件并行）</span>：计算第 $t$ 个词必须等待第 $t-1$ 个词的隐藏状态 $h_{t-1}$ 完成，哪怕你有 1 万张 GPU，也只能串行等待！</li>
+      <li><span class="mark-caution">长程记忆衰减（马尔可夫瓶颈）</span>：当句子达到几百个词时，最早的信息在数十次连乘中早已稀释殆尽（梯度消失或信息覆盖）。</li>
+    </ol>
+
+    <h2>2. RNN vs Transformer 硬件计算拓扑对比</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>对比维度</th>
+          <th>RNN / LSTM</th>
+          <th>Transformer (Self-Attention)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>时序依赖方式</strong></td>
+          <td>串行步进：$h_t = f(h_{t-1}, x_t)$</td>
+          <td><strong>全序列广播并行点积</strong></td>
+        </tr>
+        <tr>
+          <td><strong>长程连接路径长度</strong></td>
+          <td>$O(L)$（距离多远就需要传播多少步）</td>
+          <td><strong>$O(1)$（任意两个 Token 一步直达）</strong></td>
+        </tr>
+        <tr>
+          <td><strong>GPU 算力利用率</strong></td>
+          <td>极低（单步 GEMV，受限于内存时延）</td>
+          <td><strong>极高（大型 GEMM，跑满 Tensor Core）</strong></td>
+        </tr>
+        <tr>
+          <td><strong>计算复杂度</strong></td>
+          <td>$O(L \cdot D^2)$</td>
+          <td>$O(L^2 \cdot D)$（长文本下的显存痛点）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. 黑盒 JS 可交互动画：串行流水线 vs 并行广播处理时序对比</h2>
+    <p>
+      点击下方按钮，直观感受 RNN 逐时钟周期的“串行爬行”与 Transformer 的“全局瞬时全连接”！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 时序计算拓扑模拟器</div>
+      
+      <div class="control-panel">
+        <button class="btn" onclick="startRNNAnim()">演示 RNN 串行传递</button>
+        <button class="btn" onclick="startAttnAnim()" style="background: #16a34a;">演示 Transformer 并行广播</button>
+      </div>
+
+      <canvas id="seqCanvas" width="700" height="260" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #fafafa; display: block; margin: 0 auto;"></canvas>
+    </div>
+
+    <script>
+      const sCanvas = document.getElementById('seqCanvas');
+      const sCtx = sCanvas.getContext('2d');
+      const tokens = ["The", "animal", "didn't", "cross", "street", "because", "it", "was", "tired"];
+
+      function drawBaseNodes() {
+        sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
+        const startX = 50;
+        const spacing = 70;
+        const yPos = 180;
+
+        tokens.forEach((t, i) => {
+          const x = startX + i * spacing;
+          sCtx.fillStyle = '#ffffff';
+          sCtx.strokeStyle = '#94a3b8';
+          sCtx.lineWidth = 2;
+          sCtx.beginPath();
+          sCtx.roundRect(x - 28, yPos - 16, 56, 32, 6);
+          sCtx.fill();
+          sCtx.stroke();
+
+          sCtx.fillStyle = '#0f172a';
+          sCtx.font = '12px Segoe UI, sans-serif';
+          sCtx.textAlign = 'center';
+          sCtx.fillText(t, x, yPos + 4);
+        });
+      }
+
+      function startRNNAnim() {
+        drawBaseNodes();
+        const startX = 50, spacing = 70, yPos = 180;
+        let step = 0;
+
+        const timer = setInterval(() => {
+          if (step >= tokens.length - 1) {
+            clearInterval(timer);
+            return;
+          }
+          const x1 = startX + step * spacing + 28;
+          const x2 = startX + (step + 1) * spacing - 28;
+
+          sCtx.strokeStyle = '#dc2626';
+          sCtx.lineWidth = 3;
+          sCtx.beginPath();
+          sCtx.moveTo(x1, yPos);
+          sCtx.lineTo(x2, yPos);
+          sCtx.stroke();
+
+          // 箭头
+          sCtx.fillStyle = '#dc2626';
+          sCtx.beginPath();
+          sCtx.arc(x2, yPos, 4, 0, Math.PI * 2);
+          sCtx.fill();
+
+          step++;
+        }, 180);
+      }
+
+      function startAttnAnim() {
+        drawBaseNodes();
+        const startX = 50, spacing = 70, yPos = 180;
+        const targetIdx = 6; // "it"
+        const itX = startX + targetIdx * spacing;
+
+        sCtx.strokeStyle = '#2563eb';
+        sCtx.lineWidth = 2;
+
+        tokens.forEach((t, i) => {
+          if (i === targetIdx) return;
+          const curX = startX + i * spacing;
+
+          sCtx.beginPath();
+          sCtx.moveTo(itX, yPos - 20);
+          sCtx.quadraticCurveTo((itX + curX) / 2, 40, curX, yPos - 20);
+          sCtx.stroke();
+        });
+      }
+
+      drawBaseNodes();
+    </script>
+
+    <h2>4. 为什么 Transformer 能够横扫一切？</h2>
+    <div class="logic-box">
+      <strong>《Attention Is All You Need》的划时代贡献：</strong><br/>
+      Transformer 彻底砸碎了“时序必须循环处理”的陈旧观念，将序列中的每一个 Token 视为一个平等的节点。<strong>通过自注意力矩阵，任意两个相距 10 万个词的 Token 可以在 1 个时钟周期内直接完成交互与特征交换！</strong>
+    </div>
+
+    <h2>5. 打开黑盒：真实工程细节 (硬件吞吐量对比)</h2>
+    <div class="card">
+      <strong>GPU 硬件架构的胜利：</strong><br/>
+      GPU 的微架构本质是为<strong>大规模密集矩阵乘法（GEMM）</strong>设计的。RNN 的循环依赖迫使 GPU 核心不断空转等待内存加载；而 Transformer 将整个序列的所有 Token 打包为一个巨大的矩阵 $[L, D] 	imes [D, L]$，使得 GPU 的利用率（MFU, Model FLOPs Utilization）直接从 RNN 时代的 5% 飙升至 50% 以上！
+    </div>
+
+    <h2>6. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      虽然 Transformer 解决了长程记忆与并行训练问题，但自注意力机制中所有 Token 两两交互计算点积，其时间复杂度为 $O(L^2)$。<br/>
+      请问当上下文长度从 4k 暴涨到 128k 时，计算量与注意力矩阵内存会暴增多少倍？现代大模型是如何应对这一挑战的？<br/>
+      <em>提示：我们在 Phase 4 将深入剖析的 FlashAttention 正是解决这一痛点的巅峰之作。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="07_embedding_lookup.html">← 上一节：1.2 Embedding 嵌入层</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="09_qkv_intuition.html">下一节：2.1 Q/K/V 检索物理直觉 →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2.2 缩放点积注意力与极小手算 - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 2.2 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="09_qkv_intuition.html">← 2.1 Q/K/V 检索直觉</a> | 
+        <a href="11_multi_head_attention.html">2.3 多头注意力机制 →</a>
+      </div>
+    </div>
+
+    
+    <h1>2.2 缩放点积注意力 (Scaled Dot-Product Attention)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>彻底掌握深度学习史上最具影响力的核心公式 $\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$，完成 2 个 Token、2 维特征的全流程极小规模手算与 NumPy 实现。
+    </div>
+
+    <h2>1. 核心数学公式拆解</h2>
+    <p>
+      缩放点积注意力由以下 4 步连续矩阵流水线构成：
+    </p>
+    <div class="logic-box">
+      $$\text{Attention}(Q, K, V) = \underbrace{\text{softmax}\left( \frac{\overbrace{Q \times K^T}^{\text{1. 点积打分 S}}}{\underbrace{\sqrt{d_k}}_{\text{2. 尺度缩放}}} \right)}_{\text{3. 归一化注意力权重 A}} \times \underbrace{V}_{\text{4. 加权聚合}}$$
+    </div>
+
+    <h2>2. 为什么必须除以 $\sqrt{d_k}$？(防梯度消失的精妙设计)</h2>
+    <p>
+      假设 $Q$ 和 $K$ 中的每个元素都是均值为 0、方差为 1 的独立随机变量。<br/>
+      两个 $d_k$ 维向量的点积 $q \cdot k = \sum_{i=1}^{d_k} q_i k_i$ 的<strong>方差将线性扩大为 $d_k$（标准差为 $\sqrt{d_k}$）</strong>。<br/>
+      <span class="mark-caution">当特征维度 $d_k$ 很大（如 128）时，点积数值会变得极大或极小，送入 Softmax 后会直接落入指数饱和区，导致导数几乎为 0（梯度彻底消失）！</span><br/>
+      除以 $\sqrt{d_k}$ 能将方差重新拉回稳定基准 $1.0$。
+    </p>
+
+    <h2>3. 黑盒 JS 可交互动画：动态点积热力图与权重生成器</h2>
+    <p>
+      调节下方滑块改变 $Q$ 与 $K$ 向量数值，实时观察原始点积矩阵 $S$、缩放后数值、Softmax 归一化权重矩阵 $A$ 以及最终输出向量 $O$ 的全流程计算流！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 缩放点积注意力全流程数值流转仪</div>
+      
+      <div class="control-panel">
+        <div class="control-group">
+          <label>Query 1 分量 $q_{11}$:</label>
+          <input type="range" id="q11" min="-2" max="2" step="0.2" value="1.0">
+          <span id="q11_val" style="font-family: Consolas; font-weight: bold; width: 32px;">1.0</span>
+        </div>
+        <div class="control-group">
+          <label>Query 1 分量 $q_{12}$:</label>
+          <input type="range" id="q12" min="-2" max="2" step="0.2" value="0.0">
+          <span id="q12_val" style="font-family: Consolas; font-weight: bold; width: 32px;">0.0</span>
+        </div>
+        <div class="control-group">
+          <label>缩放因子 $\sqrt{d_k}$:</label>
+          <input type="range" id="scale_factor" min="1" max="4" step="0.414" value="1.414">
+          <span id="scale_val" style="font-family: Consolas; font-weight: bold; width: 40px;">1.41</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+          <div style="font-weight: bold; font-size: 13px; color: #0f172a; margin-bottom: 6px;">1. 原始点积矩阵 $QK^T$</div>
+          <code id="mat_s" style="display: block; font-size: 13px; line-height: 1.6;">[[1.0, 0.0], [0.0, 1.0]]</code>
+        </div>
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+          <div style="font-weight: bold; font-size: 13px; color: #0f172a; margin-bottom: 6px;">2. 缩放后矩阵 $S / \sqrt{d_k}$</div>
+          <code id="mat_scaled" style="display: block; font-size: 13px; line-height: 1.6;">[[0.71, 0.0], [0.0, 0.71]]</code>
+        </div>
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px;">
+          <div style="font-weight: bold; font-size: 13px; color: #2563eb; margin-bottom: 6px;">3. Softmax 权重矩阵 $A$</div>
+          <code id="mat_attn" style="display: block; font-size: 13px; line-height: 1.6; color: #1e40af;">[[0.67, 0.33], [0.33, 0.67]]</code>
+        </div>
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px;">
+          <div style="font-weight: bold; font-size: 13px; color: #166534; margin-bottom: 6px;">4. 最终输出 $Y = A \cdot V$</div>
+          <code id="mat_out" style="display: block; font-size: 13px; line-height: 1.6; color: #15803d;">[[1.34, 0.67], [0.67, 1.34]]</code>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function calcSDPA() {
+        const q11 = parseFloat(document.getElementById('q11').value);
+        const q12 = parseFloat(document.getElementById('q12').value);
+        const sqrtDk = parseFloat(document.getElementById('scale_factor').value);
+
+        document.getElementById('q11_val').innerText = q11.toFixed(1);
+        document.getElementById('q12_val').innerText = q12.toFixed(1);
+        document.getElementById('scale_val').innerText = sqrtDk.toFixed(2);
+
+        const Q = [[q11, q12], [0.0, 1.0]];
+        const K = [[1.0, 0.0], [0.0, 1.0]];
+        const V = [[2.0, 0.0], [0.0, 2.0]];
+
+        const S = [
+          [Q[0][0]*K[0][0] + Q[0][1]*K[0][1], Q[0][0]*K[1][0] + Q[0][1]*K[1][1]],
+          [Q[1][0]*K[0][0] + Q[1][1]*K[0][1], Q[1][0]*K[1][0] + Q[1][1]*K[1][1]]
+        ];
+
+        const Scaled = [
+          [S[0][0] / sqrtDk, S[0][1] / sqrtDk],
+          [S[1][0] / sqrtDk, S[1][1] / sqrtDk]
+        ];
+
+        function softmaxRow(r) {
+          const m = Math.max(r[0], r[1]);
+          const e0 = Math.exp(r[0] - m);
+          const e1 = Math.exp(r[1] - m);
+          return [e0 / (e0 + e1), e1 / (e0 + e1)];
+        }
+        const A = [softmaxRow(Scaled[0]), softmaxRow(Scaled[1])];
+
+        const Out = [
+          [A[0][0]*V[0][0] + A[0][1]*V[1][0], A[0][0]*V[0][1] + A[0][1]*V[1][1]],
+          [A[1][0]*V[0][0] + A[1][1]*V[1][0], A[1][0]*V[0][1] + A[1][1]*V[1][1]]
+        ];
+
+        document.getElementById('mat_s').innerText = `[[${S[0][0].toFixed(2)}, ${S[0][1].toFixed(2)}],\n [${S[1][0].toFixed(2)}, ${S[1][1].toFixed(2)}]]`;
+        document.getElementById('mat_scaled').innerText = `[[${Scaled[0][0].toFixed(2)}, ${Scaled[0][1].toFixed(2)}],\n [${Scaled[1][0].toFixed(2)}, ${Scaled[1][1].toFixed(2)}]]`;
+        document.getElementById('mat_attn').innerText = `[[${A[0][0].toFixed(3)}, ${A[0][1].toFixed(3)}],\n [${A[1][0].toFixed(3)}, ${A[1][0].toFixed(3)}]]`;
+        document.getElementById('mat_out').innerText = `[[${Out[0][0].toFixed(3)}, ${Out[0][1].toFixed(3)}],\n [${Out[1][0].toFixed(3)}, ${Out[1][0].toFixed(3)}]]`;
+      }
+
+      document.getElementById('q11').addEventListener('input', calcSDPA);
+      document.getElementById('q12').addEventListener('input', calcSDPA);
+      document.getElementById('scale_factor').addEventListener('input', calcSDPA);
+      calcSDPA();
+    </script>
+
+    <h2>4. 极小规模人工计算 (2 个 Token, 2 维向量完整走查)</h2>
+    <div class="logic-box">
+      <strong>已知条件：</strong>序列长度 $L=2$，特征维度 $d_k=2$（因此 $\sqrt{d_k} = \sqrt{2} \approx 1.414$）。<br/>
+      $$Q = \begin{bmatrix} 1 & 0 \\ 0 & 2 \end{bmatrix}, \quad K = \begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix}, \quad V = \begin{bmatrix} 10 & 0 \\ 0 & 20 \end{bmatrix}$$<br/>
+      <strong>第 1 步：计算点积打分矩阵 $S = Q \times K^T$</strong>
+      $$K^T = \begin{bmatrix} 1 & 0 \\ 1 & 1 \end{bmatrix} \implies S = \begin{bmatrix} 1 & 0 \\ 0 & 2 \end{bmatrix} \times \begin{bmatrix} 1 & 0 \\ 1 & 1 \end{bmatrix} = \begin{bmatrix} 1\times 1 + 0 & 1\times 0 + 0 \\ 0 + 2\times 1 & 0 + 2\times 1 \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ 2 & 2 \end{bmatrix}$$<br/>
+      <strong>第 2 步：除以 $\sqrt{d_k} = 1.414$ 进行尺度缩放</strong>
+      $$\tilde{S} = \frac{S}{\sqrt{2}} \approx \begin{bmatrix} 0.707 & 0.0 \\ 1.414 & 1.414 \end{bmatrix}$$<br/>
+      <strong>第 3 步：按行执行 Softmax 归一化</strong>
+      $$\text{第 1 行： } \text{softmax}([0.707, 0.0]) = \begin{bmatrix} \frac{e^{0.707}}{e^{0.707} + e^0} & \frac{e^0}{e^{0.707} + e^0} \end{bmatrix} \approx \begin{bmatrix} 0.670 & 0.330 \end{bmatrix}$$
+      $$\text{第 2 行： } \text{softmax}([1.414, 1.414]) = \begin{bmatrix} 0.500 & 0.500 \end{bmatrix}$$
+      $$A = \begin{bmatrix} 0.670 & 0.330 \\ 0.500 & 0.500 \end{bmatrix}$$<br/>
+      <strong>第 4 步：加权聚合 Value 矩阵 $Y = A \times V$</strong>
+      $$Y = \begin{bmatrix} 0.670 & 0.330 \\ 0.500 & 0.500 \end{bmatrix} \times \begin{bmatrix} 10 & 0 \\ 0 & 20 \end{bmatrix} = \begin{bmatrix} 0.670\times 10 & 0.330\times 20 \\ 0.500\times 10 & 0.500\times 20 \end{bmatrix} = \begin{bmatrix} 6.70 & 6.60 \\ 5.00 & 10.00 \end{bmatrix}$$
+    </div>
+
+    <h2>5. Python / NumPy 极简代码实现</h2>
+    <pre><code class="language-python">import numpy as np
+
+def scaled_dot_product_attention(Q: np.ndarray, K: np.ndarray, V: np.ndarray):
+    d_k = Q.shape[-1]
+    
+    # 1. 矩阵乘法点积打分
+    scores = np.matmul(Q, K.swapaxes(-1, -2))
+    
+    # 2. 尺度缩放
+    scaled_scores = scores / np.sqrt(d_k)
+    
+    # 3. Softmax 归一化
+    exp_scores = np.exp(scaled_scores - np.max(scaled_scores, axis=-1, keepdims=True))
+    attn_weights = exp_scores / np.sum(exp_scores, axis=-1, keepdims=True)
+    
+    # 4. 加权聚合 Value
+    output = np.matmul(attn_weights, V)
+    return output, attn_weights
+
+Q_test = np.array([[1.0, 0.0], [0.0, 2.0]])
+K_test = np.array([[1.0, 1.0], [0.0, 1.0]])
+V_test = np.array([[10.0, 0.0], [0.0, 20.0]])
+
+out, weights = scaled_dot_product_attention(Q_test, K_test, V_test)
+print("注意力权重矩阵 A:\n", np.round(weights, 3))
+print("最终输出 Y:\n", np.round(out, 2))
+</code></pre>
+
+    <h2>6. 打开黑盒：真实工程细节 (FlashAttention 思想萌芽)</h2>
+    <div class="card">
+      <strong>标准 Attention 的内存致命伤：</strong><br/>
+      在上述公式中，中间矩阵 $S$ 和 $A$ 的形状为 $[B, H, L, L]$。<br/>
+      当上下文长度 $L=32768$（32k）时，$L \times L \approx 10^9$（10 亿个浮点数），<strong>仅仅存放这一个中间注意力矩阵就需要 4GB 显存！</strong><br/>
+      在 Phase 4 中我们将看到，FlashAttention 巧妙利用分块在线 Softmax 算法（Online Softmax），完全不在显存中保存 $S$ 和 $A$，直接在 SRAM 寄存器中一步算出最终输出 $Y$！
+    </div>
+
+    <h2>7. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      如果将两个完全相同的序列送入 Attention，权重矩阵 $A$ 的对角线元素一定最大吗？<br/>
+      <em>提示：不一定！点积的大小取决于向量的夹角和模长。如果某个 Token 的 Key 模长极大且方向契合，它可能会吸引全序列大部分的注意力。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="09_qkv_intuition.html">← 上一节：2.1 Q/K/V 检索直觉</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="11_multi_head_attention.html">下一节：2.3 多头注意力机制 →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

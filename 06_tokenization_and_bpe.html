@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>1.1 Tokenization 与 BPE 算法 - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 1.1 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="05_gradients_and_backpropagation.html">← 0.5 梯度下降与反传</a> | 
+        <a href="07_embedding_lookup.html">1.2 Embedding 嵌入层 →</a>
+      </div>
+    </div>
+
+    
+    <h1>1.1 Tokenization 与 BPE 算法 (Tokenization & Byte-Pair Encoding)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>理解计算机是如何将离散的自然语言字符切分成不可再分的“数字凭证（Token ID）”，深入掌握现代大模型标配的 BPE（Byte-Pair Encoding）分词算法与词表构建机制。
+    </div>
+
+    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
+    <p>
+      计算机与神经网络只认识浮点数和矩阵，无法直接处理自然语言字符串（如 <code>"hello world"</code>）。<br/>
+      在传统的字符级（Character-level）编码中，序列长度过长（导致计算复杂度激增）；而在词级（Word-level）编码中，未登录词（OOV, Out-Of-Vocabulary）极易导致词表爆炸。<br/>
+      <strong>子词分词器（Subword Tokenizer，如 BPE）</strong>通过统计相邻字符对的共现频率，动态合并高频子词，在<strong>词表大小（约 32k~128k）与序列长度之间取得了最优工程平衡</strong>。
+    </p>
+
+    <h2>2. 输入与输出 (Tensor Shape & 格式转换)</h2>
+    <ul>
+      <li><strong>输入</strong>：原始自然语言文本字符串（Python <code>str</code>）。</li>
+      <li><strong>分词过程</strong>：字符串 $\to$ 子词字符串列表 $\to$ 词表查表（Vocabulary Lookup）。</li>
+      <li><strong>输出</strong>：一维整数 ID 数组：<span class="shape-badge">Shape: [SeqLen]</span>，数据类型为 <code>int64</code> / <code>int32</code>。</li>
+    </ul>
+
+    <h2>3. BPE 算法的核心迭代逻辑</h2>
+    <div class="logic-box">
+      <strong>BPE (Byte-Pair Encoding) 构建词表 3 步循环：</strong><br/>
+      1. <strong>初始化</strong>：将所有训练语料切分成单个字符（包含特殊词尾标记 <code>&lt;/w&gt;</code>），初始词表为所有基础字符集合；<br/>
+      2. <strong>统计频次</strong>：扫描语料库，统计所有相邻字符对（如 <code>('e', 'r')</code>）的共现频次；<br/>
+      3. <strong>合并高频对</strong>：将出现频率最高的字符对合并为一个新的子词单元（如 <code>'er'</code>），并将其加入词表；<br/>
+      4. <strong>重复迭代</strong>：直到达到预设的词表大小（Vocab Size，如 32000）。
+    </div>
+
+    <h2>4. 黑盒 JS 可交互动画：实时 BPE 分词拆解器</h2>
+    <p>
+      输入一段英文或代码文本，点击“执行 BPE 分词拆解”，实时查看分词器切分的 Token 边界、每个 Token 的字符长度以及对应的 Token ID 数组！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 实时 Tokenizer 拆解器</div>
+      
+      <div class="control-panel">
+        <div style="flex: 1; display: flex; gap: 10px; align-items: center;">
+          <label>输入待分词文本:</label>
+          <input type="text" id="token_input" value="Transformer is amazing and fast!" style="flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;">
+          <button class="btn" onclick="runTokenizer()">执行分词</button>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 320px;">
+          <div style="font-weight: 600; margin-bottom: 8px; color: #0f172a;">Token 切分边界高亮：</div>
+          <div id="token_blocks" style="min-height: 48px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
+        </div>
+
+        <div style="flex: 1; min-width: 320px;">
+          <div class="logic-box" style="margin-top: 0;">
+            <strong>输出 Token ID 序列：</strong><br/>
+            <code id="token_ids_disp" style="display: block; margin-top: 6px; word-break: break-all;">[4152, 318, 4998, 290, 1311, 0]</code><br/><br/>
+            <strong>统计特征：</strong><br/>
+            字符总数: <span id="char_count" style="font-weight: bold; color: #2563eb;">32</span> · Token 总数: <span id="token_count" style="font-weight: bold; color: #166534;">6</span> · 压缩率: <span id="comp_rate" style="font-weight: bold; color: #c2410c;">5.33 字符/Token</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const mockVocab = {
+        "trans": 1024, "former": 3128, "transformer": 4152, " ": 220,
+        "is": 318, "amazing": 4998, "and": 290, "fast": 1311, "!": 0,
+        "deep": 2048, "learning": 5120, "embedded": 6780, "system": 2100,
+        "c": 45, "++": 88, "linux": 3344, "gpu": 7890
+      };
+
+      const colorPalette = ["#dbeafe", "#dcfce7", "#fef3c7", "#f3e8ff", "#fee2e2", "#ccfbf1"];
+
+      function runTokenizer() {
+        const text = document.getElementById('token_input').value.trim();
+        const words = text.split(/(\s+|[.,!?;:])/).filter(w => w.length > 0);
+
+        const container = document.getElementById('token_blocks');
+        container.innerHTML = '';
+        const idList = [];
+
+        words.forEach((w, idx) => {
+          const lower = w.toLowerCase();
+          let tid = mockVocab[lower] || (Math.floor(Math.random() * 20000) + 1000);
+          idList.push(tid);
+
+          const span = document.createElement('span');
+          span.style.background = colorPalette[idx % colorPalette.length];
+          span.style.border = '1px solid #cbd5e1';
+          span.style.padding = '4px 10px';
+          span.style.borderRadius = '6px';
+          span.style.fontSize = '13.5px';
+          span.style.fontFamily = 'Consolas, monospace';
+          span.style.fontWeight = 'bold';
+          span.innerText = `${w} (${tid})`;
+          container.appendChild(span);
+        });
+
+        document.getElementById('token_ids_disp').innerText = JSON.stringify(idList);
+        document.getElementById('char_count').innerText = text.length;
+        document.getElementById('token_count').innerText = idList.length;
+        document.getElementById('comp_rate').innerText = (text.length / Math.max(1, idList.length)).toFixed(2) + ' 字符/Token';
+      }
+
+      runTokenizer();
+    </script>
+
+    <h2>5. 极小规模人工计算 (BPE 合并模拟)</h2>
+    <div class="logic-box">
+      <strong>初始训练语料（带词频）：</strong><br/>
+      <code>"low &lt;/w&gt;": 5,  "lowest &lt;/w&gt;": 2,  "newer &lt;/w&gt;": 6,  "wider &lt;/w&gt;": 3</code><br/><br/>
+      <strong>第 1 次迭代：</strong><br/>
+      统计所有字符对频率：<code>('e', 'r')</code> 在 <code>newer</code> 和 <code>wider</code> 中出现 $6 + 3 = 9$ 次（最高频！）。<br/>
+      $\implies$ 合并 <code>('e', 'r')</code> $	o$ <code>'er'</code>，加入新词表。<br/><br/>
+      <strong>第 2 次迭代：</strong><br/>
+      统计更新后的字符对：<code>('er', '&lt;/w&gt;')</code> 出现 $6 + 3 = 9$ 次。<br/>
+      $\implies$ 合并 <code>('er', '&lt;/w&gt;')</code> $	o$ <code>'er&lt;/w&gt;'</code>，加入新词表。
+    </div>
+
+    <h2>6. Python / NumPy 极简代码实现</h2>
+    <pre><code class="language-python">from collections import Counter, defaultdict
+
+def get_stats(vocab):
+    pairs = defaultdict(int)
+    for word, freq in vocab.items():
+        symbols = word.split()
+        for i in range(len(symbols) - 1):
+            pairs[symbols[i], symbols[i+1]] += freq
+    return pairs
+
+def merge_vocab(pair, v_in):
+    v_out = {}
+    bigram = ' '.join(pair)
+    replacement = ''.join(pair)
+    for word in v_in:
+        w_out = word.replace(bigram, replacement)
+        v_out[w_out] = v_in[word]
+    return v_out
+
+# 初始微型语料库
+vocab = {'l o w </w>': 5, 'l o w e s t </w>': 2, 'n e w e r </w>': 6, 'w i d e r </w>': 3}
+
+# 执行 3 次 BPE 合并
+for i in range(3):
+    pairs = get_stats(vocab)
+    if not pairs:
+        break
+    best_pair = max(pairs, key=pairs.get)
+    vocab = merge_vocab(best_pair, vocab)
+    print(f"Step {i+1} 合并最高频对 {best_pair} -> 新语料状态: {vocab}")
+</code></pre>
+
+    <h2>7. 数学原理与物理直觉</h2>
+    <p>
+      为什么大模型几乎全部采用基于字节的 <span class="mark-concept">Byte-fallback BPE (如 tiktoken, SentencePiece)</span>？
+    </p>
+    <ul>
+      <li><strong>零 OOV（Out-of-Vocabulary）保证</strong>：任何未知的罕见生僻字或 UTF-8 表情包，最终都可以退化为最底层的 256 个基本字节（Byte）表示，系统永远不会因为遇到未知字符而崩溃报 <code>&lt;UNK&gt;</code>！</li>
+    </ul>
+
+    <h2>8. 打开黑盒：真实工程细节 (BPE 带来的 LLM 缺陷)</h2>
+    <div class="card">
+      <strong>Tokenization 导致的著名 LLM 盲区：</strong><br/>
+      1. <strong>大模型为什么不擅长数单词中有几个 'r'（如 "strawberry"）？</strong> 因为分词器将 <code>"strawberry"</code> 切分为了 <code>["straw", "berry"]</code> 两个单一 Token，模型在注意力层根本看不到内部的单个字符！<br/>
+      2. <strong>空格敏感性</strong>：<code>" hello"</code>（带前导空格）与 <code>"hello"</code>（无空格）在 GPT 词表中是两个完全不同的 Token ID。
+    </div>
+
+    <h2>9. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      如果将词表大小从 32000 扩大到 128000（如 LLaMA-3），对大模型的参数量、推理显存和生成吞吐分别有什么影响？<br/>
+      <em>提示：词表扩大会直接增加 Embedding 层和最后的 LM Head 输出投影矩阵的参数量（$[128000, 4096]$），但单次生成的 Token 数量会变少（信息压缩比更高）。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="05_gradients_and_backpropagation.html">← 上一节：0.5 梯度下降与反传</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="07_embedding_lookup.html">下一节：1.2 Embedding 嵌入层 →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

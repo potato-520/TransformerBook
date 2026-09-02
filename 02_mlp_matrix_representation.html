@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>0.2 MLP与矩阵表达 - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 0.2 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="01_neuron_and_perceptron.html">← 0.1 神经元与感知机</a> | 
+        <a href="03_activation_functions.html">0.3 激活函数的本质 →</a>
+      </div>
+    </div>
+
+    
+    <h1>0.2 多层感知机与矩阵表达 (MLP & Matrix Representation)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>理解全连接层为什么能表达为优雅的矩阵乘法 $Y = X \cdot W + B$，掌握 Tensor Shape 的传递规律，并通过可交互网格动画直观理解矩阵乘法的“空间变换（拉伸/旋转/剪切）”本质。
+    </div>
+
+    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
+    <p>
+      上一节我们发现，单个神经元只能画一条直线（超平面），无法解决非线性分类（如 XOR 问题）。<br/>
+      如果我们将多个神经元并行组合在一起形成“隐藏层”，就能将原始空间进行升维或扭曲。而在计算机底层，<strong>并行计算 $N$ 个神经元的加权求和，本质上就是一次通用的矩阵乘法（GEMM）</strong>。
+    </p>
+
+    <h2>2. 输入是什么？ (Tensor Shape & 物理含义)</h2>
+    <ul>
+      <li><strong>输入张量 $X$</strong>：<span class="shape-badge">Shape: [B, D_in]</span>。$B$ 是 Batch Size（并发样本数），$D_{in}$ 是输入特征维度。</li>
+      <li><strong>权重矩阵 $W$</strong>：<span class="shape-badge">Shape: [D_in, D_out]</span>。第 $j$ 列代表第 $j$ 个神经元的全部输入权重。</li>
+      <li><strong>偏置向量 $B$</strong>：<span class="shape-badge">Shape: [1, D_out]</span>。每个输出神经元独立的偏置量。</li>
+    </ul>
+
+    <h2>3. 输出是什么？ (Tensor Shape 变换轨迹)</h2>
+    <p>
+      全连接层（Linear / Dense Layer）的前向计算：
+      $$\underbrace{Y}_{[B, D_{out}]} = \underbrace{X}_{[B, D_{in}]} \times \underbrace{W}_{[D_{in}, D_{out}]} + \underbrace{B}_{[1, D_{out}] \text{ (广播)}}$$
+    </p>
+
+    <h2>4. 黑盒 JS 可交互动画：矩阵乘法的空间变换</h2>
+    <p>
+      输入一个 2D 坐标网格（基底向量 $\vec{i}=(1,0), \vec{j}=(0,1)$），调节变换矩阵 $W = \begin{pmatrix} w_{11} & w_{12} \\ w_{21} & w_{22} \end{pmatrix}$ 的 4 个分量，实时观察空间网格的<strong>缩放、旋转、剪切与投影</strong>！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 2D 矩阵空间变换探索器</div>
+      
+      <div class="control-panel">
+        <div class="control-group">
+          <label>$w_{11}$:</label>
+          <input type="range" id="w11_slider" min="-2" max="2" step="0.1" value="1.0">
+          <span id="w11_val" style="font-family: Consolas; font-weight: bold; width: 32px;">1.0</span>
+        </div>
+        <div class="control-group">
+          <label>$w_{12}$:</label>
+          <input type="range" id="w12_slider" min="-2" max="2" step="0.1" value="0.0">
+          <span id="w12_val" style="font-family: Consolas; font-weight: bold; width: 32px;">0.0</span>
+        </div>
+        <div class="control-group">
+          <label>$w_{21}$:</label>
+          <input type="range" id="w21_slider" min="-2" max="2" step="0.1" value="0.0">
+          <span id="w21_val" style="font-family: Consolas; font-weight: bold; width: 32px;">0.0</span>
+        </div>
+        <div class="control-group">
+          <label>$w_{22}$:</label>
+          <input type="range" id="w22_slider" min="-2" max="2" step="0.1" value="1.0">
+          <span id="w22_val" style="font-family: Consolas; font-weight: bold; width: 32px;">1.0</span>
+        </div>
+        <button class="btn" onclick="presetMatrix('rot')">旋转45°</button>
+        <button class="btn" onclick="presetMatrix('shear')">剪切变换</button>
+        <button class="btn" onclick="presetMatrix('identity')">单位重置</button>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="matrixCanvas" width="500" height="360" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
+        <div style="flex: 1; min-width: 240px;">
+          <div class="logic-box" style="margin-top: 0;">
+            <strong>当前变换矩阵 $W$：</strong><br/>
+            <code id="matrix_latex">[[1.0, 0.0], [0.0, 1.0]]</code><br/><br/>
+            <strong>行列式 $\det(W)$ (面积缩放比)：</strong><br/>
+            <span id="det_display" style="font-size: 18px; font-weight: bold; color: #2563eb;">1.00</span>
+          </div>
+          <p style="font-size: 13.5px; color: #64748b;">
+            💡 <strong>工程物理直觉</strong>：矩阵每一列就是变换后新的基底向量坐标。当 $\det(W)=0$ 时，空间被降维压扁成一条线，信息发生不可逆压缩。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const mCanvas = document.getElementById('matrixCanvas');
+      const mCtx = mCanvas.getContext('2d');
+      const originX = mCanvas.width / 2;
+      const originY = mCanvas.height / 2;
+      const scale = 50;
+
+      function drawMatrix() {
+        const w11 = parseFloat(document.getElementById('w11_slider').value);
+        const w12 = parseFloat(document.getElementById('w12_slider').value);
+        const w21 = parseFloat(document.getElementById('w21_slider').value);
+        const w22 = parseFloat(document.getElementById('w22_slider').value);
+
+        document.getElementById('w11_val').innerText = w11.toFixed(1);
+        document.getElementById('w12_val').innerText = w12.toFixed(1);
+        document.getElementById('w21_val').innerText = w21.toFixed(1);
+        document.getElementById('w22_val').innerText = w22.toFixed(1);
+
+        const det = w11 * w22 - w12 * w21;
+        document.getElementById('det_display').innerText = det.toFixed(2);
+        document.getElementById('matrix_latex').innerText = `[[${w11.toFixed(2)}, ${w12.toFixed(2)}], [${w21.toFixed(2)}, ${w22.toFixed(2)}]]`;
+
+        mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+
+        // 原网格参考 (灰色虚线)
+        mCtx.strokeStyle = '#f1f5f9';
+        mCtx.lineWidth = 1;
+        for (let i = -4; i <= 4; i++) {
+          mCtx.beginPath();
+          mCtx.moveTo(originX + i * scale, 0);
+          mCtx.lineTo(originX + i * scale, mCanvas.height);
+          mCtx.stroke();
+          mCtx.beginPath();
+          mCtx.moveTo(0, originY + i * scale);
+          mCtx.lineTo(mCanvas.width, originY + i * scale);
+          mCtx.stroke();
+        }
+
+        // 变换后网格 (浅蓝色线)
+        mCtx.strokeStyle = '#bfdbfe';
+        mCtx.lineWidth = 1.5;
+        for (let i = -3; i <= 3; i++) {
+          mCtx.beginPath();
+          const pStart = transformPoint(i, -3, w11, w12, w21, w22);
+          const pEnd = transformPoint(i, 3, w11, w12, w21, w22);
+          mCtx.moveTo(pStart.sx, pStart.sy);
+          mCtx.lineTo(pEnd.sx, pEnd.sy);
+          mCtx.stroke();
+
+          mCtx.beginPath();
+          const pStart2 = transformPoint(-3, i, w11, w12, w21, w22);
+          const pEnd2 = transformPoint(3, i, w11, w12, w21, w22);
+          mCtx.moveTo(pStart2.sx, pStart2.sy);
+          mCtx.lineTo(pEnd2.sx, pEnd2.sy);
+          mCtx.stroke();
+        }
+
+        const i_trans = transformPoint(1, 0, w11, w12, w21, w22);
+        const j_trans = transformPoint(0, 1, w11, w12, w21, w22);
+
+        drawVector(originX, originY, i_trans.sx, i_trans.sy, '#dc2626', 'i'');
+        drawVector(originX, originY, j_trans.sx, j_trans.sy, '#16a34a', 'j'');
+      }
+
+      function transformPoint(x, y, w11, w12, w21, w22) {
+        const tx = w11 * x + w12 * y;
+        const ty = w21 * x + w22 * y;
+        return {
+          sx: originX + tx * scale,
+          sy: originY - ty * scale
+        };
+      }
+
+      function drawVector(x1, y1, x2, y2, color, label) {
+        mCtx.strokeStyle = color;
+        mCtx.fillStyle = color;
+        mCtx.lineWidth = 3;
+        mCtx.beginPath();
+        mCtx.moveTo(x1, y1);
+        mCtx.lineTo(x2, y2);
+        mCtx.stroke();
+        mCtx.beginPath();
+        mCtx.arc(x2, y2, 4, 0, Math.PI * 2);
+        mCtx.fill();
+      }
+
+      function presetMatrix(type) {
+        if (type === 'rot') {
+          document.getElementById('w11_slider').value = 0.7;
+          document.getElementById('w12_slider').value = -0.7;
+          document.getElementById('w21_slider').value = 0.7;
+          document.getElementById('w22_slider').value = 0.7;
+        } else if (type === 'shear') {
+          document.getElementById('w11_slider').value = 1.0;
+          document.getElementById('w12_slider').value = 1.2;
+          document.getElementById('w21_slider').value = 0.0;
+          document.getElementById('w22_slider').value = 1.0;
+        } else {
+          document.getElementById('w11_slider').value = 1.0;
+          document.getElementById('w12_slider').value = 0.0;
+          document.getElementById('w21_slider').value = 0.0;
+          document.getElementById('w22_slider').value = 1.0;
+        }
+        drawMatrix();
+      }
+
+      document.getElementById('w11_slider').addEventListener('input', drawMatrix);
+      document.getElementById('w12_slider').addEventListener('input', drawMatrix);
+      document.getElementById('w21_slider').addEventListener('input', drawMatrix);
+      document.getElementById('w22_slider').addEventListener('input', drawMatrix);
+      drawMatrix();
+    </script>
+
+    <h2>5. 极小规模人工计算 (Batch=2, DimIn=2, DimOut=3)</h2>
+    <div class="logic-box">
+      <strong>已知条件：</strong><br/>
+      输入矩阵：$X = \begin{bmatrix} 1 & 2 \\ 0 & 1 \end{bmatrix}$（Batch=2, DimIn=2）<br/>
+      权重矩阵：$W = \begin{bmatrix} 1 & 0 & -1 \\ 2 & 1 & 0 \end{bmatrix}$（DimIn=2, DimOut=3）<br/>
+      偏置向量：$B = \begin{bmatrix} 0.1 & 0.2 & 0.3 \end{bmatrix}$（DimOut=3）<br/><br/>
+      <strong>计算过程：</strong><br/>
+      1. 矩阵乘法 $X \times W$：
+      $$\text{第 1 个样本： } [1, 2] \times W = \begin{bmatrix} 1\times 1 + 2\times 2 & 1\times 0 + 2\times 1 & 1\times(-1) + 2\times 0 \end{bmatrix} = \begin{bmatrix} 5 & 2 & -1 \end{bmatrix}$$
+      $$\text{第 2 个样本： } [0, 1] \times W = \begin{bmatrix} 0\times 1 + 1\times 2 & 0\times 0 + 1\times 1 & 0\times(-1) + 1\times 0 \end{bmatrix} = \begin{bmatrix} 2 & 1 & 0 \end{bmatrix}$$
+      2. 加上广播偏置 $B$：
+      $$Y = \begin{bmatrix} 5 & 2 & -1 \\ 2 & 1 & 0 \end{bmatrix} + \begin{bmatrix} 0.1 & 0.2 & 0.3 \\ 0.1 & 0.2 & 0.3 \end{bmatrix} = \begin{bmatrix} 5.1 & 2.2 & -0.7 \\ 2.1 & 1.2 & 0.3 \end{bmatrix}$$
+    </div>
+
+    <h2>6. Python / NumPy 极简代码实现</h2>
+    <pre><code class="language-python">import numpy as np
+
+# 定义输入张量与权重
+X = np.array([[1.0, 2.0],
+              [0.0, 1.0]], dtype=np.float32)  # Shape: [2, 2]
+
+W = np.array([[1.0, 0.0, -1.0],
+              [2.0, 1.0,  0.0]], dtype=np.float32)  # Shape: [2, 3]
+
+B = np.array([0.1, 0.2, 0.3], dtype=np.float32)     # Shape: [3]
+
+# 前向矩阵运算
+Y = np.matmul(X, W) + B
+
+print("输出矩阵 Y 的 Shape:", Y.shape)
+print("输出数值:\n", Y)
+# [[ 5.1  2.2 -0.7]
+#  [ 2.1  1.2  0.3]]
+</code></pre>
+
+    <h2>7. 数学原理与物理直觉</h2>
+    <p>
+      在现代 LLM 中（例如 LLaMA-3 8B），每个 Token 的特征维度 $D_{model} = 4096$：
+    </p>
+    <ul>
+      <li><strong>全连接投影</strong>：本质上就是将 4096 维空间中的语义坐标点，通过矩阵乘法旋转、缩放到另一个维度的空间（如 FFN 的 14336 维）。</li>
+      <li><strong>信息解耦与组合</strong>：矩阵乘法能够将上一层各个离散特征通道按比例重新混合，提炼出更高阶的抽象特征。</li>
+    </ul>
+
+    <h2>8. 打开黑盒：真实工程细节 (BLAS / GEMM 加速)</h2>
+    <div class="card">
+      <strong>为什么 AI 芯片都疯狂优化 GEMM？</strong>
+      <ul>
+        <li>在 CPU 上，三层嵌套循环实现的矩阵乘法（$O(N^3)$）会频繁导致 L1/L2 Cache Miss；高性能 BLAS 库（如 OpenBLAS、Intel MKL）会采用 <span class="mark-concept">矩阵分块（Tiling）</span> 与 SIMD 指令（AVX-512 / ARM NEON）将子矩阵完全装入寄存器计算。</li>
+        <li>在 GPU 上，<strong>cuBLAS</strong> 采用 Warp 级共享内存协作与 Tensor Core，吞吐量可达数以百计的 TFLOPS。</li>
+      </ul>
+    </div>
+
+    <h2>9. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      若输入维度为 $[B=4, L=512, D_{in}=4096]$，通过一个输出维度为 $D_{out}=4096$ 的线性层。<br/>
+      请问总共需要执行多少次浮点乘累加（FLOPs）？<br/>
+      <em>提示：单次 $[4096] \times [4096]$ 产生 1 个标量需要 $4096$ 次乘法与加法。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="01_neuron_and_perceptron.html">← 上一节：0.1 神经元与感知机</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="03_activation_functions.html">下一节：0.3 激活函数的本质 →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

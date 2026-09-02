@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3.2 Causal Mask 因果掩码 - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 3.2 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="12_positional_encoding_and_rope.html">← 3.1 位置编码与RoPE</a> | 
+        <a href="14_layer_norm_and_rmsnorm.html">3.3 LayerNorm 与 RMSNorm →</a>
+      </div>
+    </div>
+
+    
+    <h1>3.2 Causal Mask 因果掩码 (Causal Masking)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>理解为什么 Decoder-Only 大模型在生成文本时“绝对不能偷看未来”，掌握上三角 $-\infty$ 掩码矩阵的构建原理与 Softmax 归零机制。
+    </div>
+
+    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
+    <p>
+      现代主流大模型（GPT-4、LLaMA-3、Qwen-2.5）全部属于 **Decoder-Only 自回归架构**。<br/>
+      自回归生成的本质是：<strong>根据已经生成的历史单词 $[x_1, x_2, \dots, x_t]$，预测下一个单词 $x_{t+1}$</strong>。<br/>
+      在模型训练阶段，整句话是一次性并行输入进 GPU 的。如果不做任何约束，第 $t$ 个词就能在注意力矩阵中“偷看”到第 $t+1$ 个词的真实答案！<br/>
+      <span class="mark-danger">后果：模型会走捷径死记硬背答案，在真实推理生成时彻底瘫痪！</span>
+    </p>
+
+    <h2>2. 数学构造：上三角 $-\infty$ 掩码矩阵</h2>
+    <p>
+      为了在并行计算的同时彻底阻断“未来信息泄漏”，我们在注意力打分矩阵 $S = \frac{QK^T}{\sqrt{d_k}}$ 上直接叠加一个<strong>下三角因果掩码矩阵 $M$</strong>：
+      $$M_{ij} = \begin{cases} 0, & i \ge j \quad (\text{当前与历史 Token，允许交互}) \\ -\infty, & i < j \quad (\text{未来 Token，严格屏蔽}) \end{cases}$$
+    </p>
+    <p>
+      叠加后送入 Softmax：
+      $$\text{softmax}(S + M)_{ij} = \frac{e^{S_{ij} + M_{ij}}}{\sum_k e^{S_{ik} + M_{ik}}} \implies \text{当 } i < j \text{ 时，} e^{-\infty} = 0 \quad (\text{权重精确为 } 0.000)$$
+    </p>
+
+    <h2>3. 黑盒 JS 可交互动画：因果 Mask 开关矩阵</h2>
+    <p>
+      点击下方按钮切换因果掩码状态，直观观察注意力矩阵的未来视野遮罩效果！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 Causal Mask 矩阵遮罩探索器</div>
+      
+      <div class="control-panel">
+        <button class="btn" onclick="toggleMask(true)">开启因果掩码 (Decoder 自回归模式)</button>
+        <button class="btn" onclick="toggleMask(false)" style="background: #64748b;">关闭因果掩码 (Encoder 全局双向模式)</button>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <div id="mask_grid" style="display: grid; grid-template-columns: repeat(4, 56px); gap: 6px; padding: 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;"></div>
+        <div style="flex: 1; min-width: 240px;">
+          <div class="logic-box" style="margin-top: 0;">
+            <strong>当前注意力模式：</strong><br/>
+            <span id="mask_mode_disp" style="font-weight: bold; color: #2563eb;">Decoder 因果单向注意 (Causal Mask ON)</span><br/><br/>
+            <strong>矩阵解释：</strong><br/>
+            <span style="color: #166534; font-weight: bold;">绿色方块 (0.0)</span>：允许查看自身及历史 Token<br/>
+            <span style="color: #dc2626; font-weight: bold;">红色方块 (-∞)</span>：未来 Token，Softmax 后权重为 0%
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const grid = document.getElementById('mask_grid');
+      const tokens4 = ["I", "love", "deep", "learning"];
+
+      function renderMaskGrid(isCausal) {
+        grid.innerHTML = '';
+        document.getElementById('mask_mode_disp').innerText = isCausal 
+          ? "Decoder 因果单向注意 (Causal Mask ON)" 
+          : "Encoder 全局双向注意 (Full Attention)";
+        document.getElementById('mask_mode_disp').style.color = isCausal ? "#2563eb" : "#64748b";
+
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 4; c++) {
+            const cell = document.createElement('div');
+            cell.style.width = '56px';
+            cell.style.height = '42px';
+            cell.style.display = 'flex';
+            cell.style.alignItems = 'center';
+            cell.style.justifyContent = 'center';
+            cell.style.borderRadius = '4px';
+            cell.style.fontFamily = 'Consolas, monospace';
+            cell.style.fontSize = '12px';
+            cell.style.fontWeight = 'bold';
+
+            if (isCausal && c > r) {
+              cell.style.background = '#fee2e2';
+              cell.style.color = '#dc2626';
+              cell.style.border = '1px solid #fca5a5';
+              cell.innerText = '-inf';
+            } else {
+              cell.style.background = '#dcfce7';
+              cell.style.color = '#166534';
+              cell.style.border = '1px solid #86efac';
+              cell.innerText = '0.0';
+            }
+            grid.appendChild(cell);
+          }
+        }
+      }
+
+      function toggleMask(on) { renderMaskGrid(on); }
+      renderMaskGrid(true);
+    </script>
+
+    <h2>4. Python / NumPy 极简因果掩码实现</h2>
+    <pre><code class="language-python">import numpy as np
+
+def apply_causal_mask(scores: np.ndarray) -> np.ndarray:
+    seq_len = scores.shape[-1]
+    
+    # 1. 构造上三角为 True 的布尔矩阵
+    mask = np.triu(np.ones((seq_len, seq_len), dtype=bool), k=1)
+    
+    # 2. 将未来位置填充为 -inf
+    masked_scores = np.where(mask, -1e9, scores)
+    
+    # 3. Softmax 归一化
+    exp_s = np.exp(masked_scores - np.max(masked_scores, axis=-1, keepdims=True))
+    attn_weights = exp_s / np.sum(exp_s, axis=-1, keepdims=True)
+    return attn_weights
+
+raw_scores = np.ones((4, 4)) * 2.0
+masked_attn = apply_causal_mask(raw_scores)
+print("应用因果掩码后的注意力权重矩阵 A:\n", np.round(masked_attn, 3))
+</code></pre>
+
+    <h2>5. 打开黑盒：真实工程细节 (FlashAttention 硬件因果剔除)</h2>
+    <div class="card">
+      <strong>算力翻倍福利：</strong><br/>
+      在因果掩码下，整个 $L \times L$ 注意力矩阵的上半部分（右上角）是完全不需要参与实际计算的！<br/>
+      FlashAttention 在 CUDA 底层直接<strong>跳过了上三角全部 Tile 矩阵块的加载与计算</strong>，使得 Decoder-Only 架构的前向注意力计算速度直接提升了整整一倍！
+    </div>
+
+    <h2>6. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      在 LLM 部署推理阶段（例如正在生成第 500 个 Token），我们还需要构造 $500 \times 500$ 的因果掩码矩阵吗？<br/>
+      <em>提示：不需要！在单步自回归推理中，当前 Query 只有一个（$L=1$），它只需与 KV Cache 中已经存在的前 499 个 Token 计算注意力，天生就不会接触未来！</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="12_positional_encoding_and_rope.html">← 上一节：3.1 位置编码与RoPE</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="14_layer_norm_and_rmsnorm.html">下一节：3.3 LayerNorm 与 RMSNorm →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

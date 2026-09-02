@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>4.5 模型量化与边缘部署 - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 4.5 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="20_gqa_and_flash_attention.html">← 4.4 GQA与FlashAttention</a> | 
+        <a href="index.html">返回全书目录 →</a>
+      </div>
+    </div>
+
+    
+    <h1>4.5 模型量化与边缘部署 (Quantization & Edge Deployment)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>从嵌入式定点数（Fixed-point）与 DSP 算力优化视角，掌握 FP32 $\to$ FP16 $\to$ INT8 / INT4 模型量化的数学映射公式，理解 Weight-Only 量化与 MCU/NPU 边缘端硬件加速。
+    </div>
+
+    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
+    <p>
+      一个标准的 70B 参数大模型以 FP16（16 位浮点，每参数 2 字节）存储时，<strong>仅权重就需要 $70 \times 2 = 140\text{ GB}$ 显存</strong>，至少需要 2 张昂贵的 A100/H100 80GB 专业计算卡。<br/>
+      但在很多工业边缘端（车载 MCU、嵌入式 Linux 板卡、高通 NPU 手机芯片）上，内存往往只有 8GB~16GB。<br/>
+      <strong>模型量化（Quantization）：通过定点映射，将每个 16 位浮点数压缩为 8 位或 4 位整数（INT8 / INT4），直接将显存需求缩减为原来的 $\frac{1}{2} \sim \frac{1}{4}$，并极大提升定点 MAC 计算吞吐！</strong>
+    </p>
+
+    <h2>2. 定点量化与反量化核心数学映射</h2>
+    <div class="logic-box">
+      <strong>对称定点量化（Symmetric Quantization）公式：</strong><br/>
+      1. <strong>量化 Scale 比例因子</strong>：
+      $$S = \frac{\max(|X|)}{q_{max}} \quad (\text{INT8 时 } q_{max}=127)$$
+      2. <strong>浮点 $\to$ 定点量化</strong>：
+      $$Q = \text{clip}\left( \text{round}\left(\frac{X}{S}\right), -q_{max}, q_{max} \right) \in \text{INT8}$$
+      3. <strong>定点 $\to$ 浮点反量化（Dequantization）</strong>：
+      $$\hat{X} = Q \times S \approx X$$
+    </div>
+
+    <h2>3. 黑盒 JS 可交互动画：INT8 / INT4 量化精度与舍入误差对比仪</h2>
+    <p>
+      拖动下方滑块输入任意浮点权重数值，对比 INT8（256 个量化阶梯）与 INT4（仅 16 个量化阶梯）的舍入误差与反量化逼近效果！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 定点量化阶梯与舍入误差测试台</div>
+      
+      <div class="control-panel">
+        <div class="control-group">
+          <label>原始浮点权重 $x$:</label>
+          <input type="range" id="fp_input" min="-3.0" max="3.0" step="0.05" value="1.42">
+          <span id="fp_disp" style="font-family: Consolas; font-weight: bold; width: 44px;">1.42</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px;">
+          <strong style="color: #2563eb; font-size: 15px;">1. INT8 量化 (256 阶梯, 节省 50% 内存)</strong><br/><br/>
+          定点整数值: <code id="int8_val" style="font-size: 14px;">60</code><br/>
+          反量化还原值: <span id="int8_dequant" style="font-family: Consolas; font-weight: bold;">1.417</span><br/>
+          舍入绝对误差: <span id="int8_err" style="color: #166534; font-weight: bold;">0.003 (极高保真度)</span>
+        </div>
+
+        <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 14px;">
+          <strong style="color: #c2410c; font-size: 15px;">2. INT4 量化 (16 阶梯, 节省 75% 内存)</strong><br/><br/>
+          定点整数值: <code id="int4_val" style="font-size: 14px;">4</code><br/>
+          反量化还原值: <span id="int4_dequant" style="font-family: Consolas; font-weight: bold;">1.500</span><br/>
+          舍入绝对误差: <span id="int4_err" style="color: #dc2626; font-weight: bold;">0.080 (存在轻微量化噪声)</span>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function updateQuant() {
+        const x = parseFloat(document.getElementById('fp_input').value);
+        document.getElementById('fp_disp').innerText = x.toFixed(2);
+        const maxVal = 3.0;
+
+        const s8 = maxVal / 127.0;
+        const q8 = Math.max(-127, Math.min(127, Math.round(x / s8)));
+        const deq8 = q8 * s8;
+        const err8 = Math.abs(x - deq8);
+
+        document.getElementById('int8_val').innerText = q8;
+        document.getElementById('int8_dequant').innerText = deq8.toFixed(3);
+        document.getElementById('int8_err').innerText = `${err8.toFixed(4)} (高精度)`;
+
+        const s4 = maxVal / 7.0;
+        const q4 = Math.max(-7, Math.min(7, Math.round(x / s4)));
+        const deq4 = q4 * s4;
+        const err4 = Math.abs(x - deq4);
+
+        document.getElementById('int4_val').innerText = q4;
+        document.getElementById('int4_dequant').innerText = deq4.toFixed(3);
+        document.getElementById('int4_err').innerText = `${err4.toFixed(4)}`;
+      }
+
+      document.getElementById('fp_input').addEventListener('input', updateQuant);
+      updateQuant();
+    </script>
+
+    <h2>4. Python / NumPy 极简 INT8 量化与反量化实现</h2>
+    <pre><code class="language-python">import numpy as np
+
+def quantize_int8(tensor: np.ndarray):
+    max_val = np.max(np.abs(tensor))
+    scale = max_val / 127.0
+    
+    q_tensor = np.clip(np.round(tensor / scale), -127, 127).astype(np.int8)
+    return q_tensor, float(scale)
+
+def dequantize_int8(q_tensor: np.ndarray, scale: float) -> np.ndarray:
+    return q_tensor.astype(np.float32) * scale
+
+weights_fp32 = np.random.randn(4, 4).astype(np.float32)
+q_weights, scale = quantize_int8(weights_fp32)
+recovered_weights = dequantize_int8(q_weights, scale)
+
+print("原始 FP32 权重 (第一行):\n", weights_fp32[0])
+print("量化 INT8 权重 (第一行):\n", q_weights[0])
+print("反量化还原权重 (第一行):\n", np.round(recovered_weights[0], 4))
+</code></pre>
+
+    <h2>5. 打开黑盒：真实工程细节 (AWQ / GPTQ 与边缘 NPU)</h2>
+    <div class="card">
+      <strong>为什么 INT4 精度几乎不掉点（AWQ 核心思想）？</strong><br/>
+      研究发现，神经网络中只有约 <strong>1% 的关键权重（Salient Weights / Outliers）</strong> 对输出质量起决定性作用。<br/>
+      现代工业级量化算法（<strong>AWQ / GPTQ</strong>）通过保护这 1% 的关键权重不被剧烈舍入，将其余 99% 的普通权重激进压缩到 INT4，实现了在 70B 模型上“体积缩小 4 倍而准确率近乎零损失”的工程奇迹！
+    </div>
+
+    <h2>6. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      恭喜你完成了全书全部 21 篇交互式核心知识体系的探索！<br/>
+      回顾从 0.1 神经元到 4.5 边缘量化的全过程，如果现在让你在树莓派或一块嵌入式 NPU 板卡上部署一个 3B 参数的大模型，你认为最先需要配置和优化的 3 个关键系统组件分别是什么？<br/>
+      <em>提示：1. Weight-Only INT4 量化（压缩存储与显存带宽）；2. GQA 与 Paged KV Cache（管理动态显存）；3. 针对 CPU/NPU 汇编优化的 FlashAttention GEMM 算子库。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="20_gqa_and_flash_attention.html">← 上一节：4.4 GQA与FlashAttention</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="index.html">下一节：返回全书目录 →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

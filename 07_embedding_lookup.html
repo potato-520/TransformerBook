@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>1.2 Embedding 嵌入层与语义空间 - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 1.2 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="06_tokenization_and_bpe.html">← 1.1 Tokenization与BPE</a> | 
+        <a href="08_sequence_models_bottleneck.html">1.3 传统序列模型瓶颈 →</a>
+      </div>
+    </div>
+
+    
+    <h1>1.2 Embedding 嵌入层与语义空间 (Embedding Layer & Vector Space)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>破除 Embedding 的高深神秘感，从嵌入式查表（Lookup Table / RAM 读取）视角理解其本质，掌握高维密集向量的几何加减与余弦相似度度量。
+    </div>
+
+    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
+    <p>
+      Token ID 只是一个孤立的整数编号（例如 <code>apple=1024</code>，<code>orange=1025</code>）。<br/>
+      在离散的整数之间，加减乘除毫无数学意义（例如 $1024 + 1 = 1025$ 并不代表苹果加上 1 变成橙子）。<br/>
+      <strong>Embedding 嵌入层</strong>的作用，就是为每个 Token 赋予一个高维度的稠密浮点向量（如 4096 维），<strong>让语义相近的词在高维几何空间中靠得更近</strong>。
+    </p>
+
+    <h2>2. 输入与输出 Tensor Shape (查表本质)</h2>
+    <ul>
+      <li><strong>输入 Token ID 矩阵 $X$</strong>：<span class="shape-badge">Shape: [B, L]</span>（整数索引，数据类型 <code>int64</code>）。</li>
+      <li><strong>Embedding 权重查找表 $E$</strong>：<span class="shape-badge">Shape: [V, D_{model}]</span>（$V$ 是词表大小，$D_{model}$ 是特征维度）。</li>
+      <li><strong>输出张量 $H$</strong>：<span class="shape-badge">Shape: [B, L, D_{model}]</span>（浮点数张量，<code>float32 / bfloat16</code>）。</li>
+    </ul>
+
+    <h2>3. 几何物理直觉：高维空间中的语义加减法</h2>
+    <div class="logic-box">
+      <strong>著名的向量算术奇迹：</strong><br/>
+      $$\vec{v}(\text{"King"}) - \vec{v}(\text{"Man"}) + \vec{v}(\text{"Woman"}) \approx \vec{v}(\text{"Queen"})$$
+      在训练良好的 Embedding 空间中，特定方向的平移向量代表了明确的语义属性（例如“性别向量”、“时态向量”、“资本与国家关系向量”）。
+    </div>
+
+    <h2>4. 黑盒 JS 可交互动画：2D 语义向量投影仪</h2>
+    <p>
+      下方将 8 个经典词汇的语义向量投影在 2D 平面上。<br/>
+      点击“计算余弦相似度”或拖动词汇观察它们在向量空间中的距离与夹角！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 2D 语义向量空间分布与相似度探测</div>
+      
+      <div class="control-panel">
+        <div class="control-group">
+          <label>选择词汇 A:</label>
+          <select id="word_a" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 600;">
+            <option value="King">King (国王)</option>
+            <option value="Queen">Queen (王后)</option>
+            <option value="Man">Man (男人)</option>
+            <option value="Woman">Woman (女人)</option>
+            <option value="Apple">Apple (苹果)</option>
+            <option value="Orange">Orange (橙子)</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>选择词汇 B:</label>
+          <select id="word_b" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 600;">
+            <option value="Queen">Queen (王后)</option>
+            <option value="King">King (国王)</option>
+            <option value="Woman">Woman (女人)</option>
+            <option value="Orange">Orange (橙子)</option>
+            <option value="Apple">Apple (苹果)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="embCanvas" width="500" height="340" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #fafafa;"></canvas>
+        <div style="flex: 1; min-width: 240px;">
+          <div class="logic-box" style="margin-top: 0;">
+            <strong>余弦相似度公式：</strong><br/>
+            $$\cos(\theta) = \frac{\vec{A} \cdot \vec{B}}{\|\vec{A}\| \|\vec{B}\|}$$
+            <strong>测量结果：</strong><br/>
+            夹角 $\theta$: <span id="angle_disp" style="font-weight: bold; color: #2563eb;">18.5°</span><br/>
+            相似度 $\cos(\theta)$: <span id="sim_disp" style="font-size: 22px; font-weight: 800; color: #166534;">0.948</span>
+          </div>
+          <p style="font-size: 13.5px; color: #64748b;">
+            💡 <strong>工程经验</strong>：在 RAG（检索增强生成）与向量数据库（Milvus / Qdrant）中，余弦相似度是最常用的文本相似度检索标准。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const eCanvas = document.getElementById('embCanvas');
+      const eCtx = eCanvas.getContext('2d');
+
+      const wordVectors = {
+        "King": {x: 2.2, y: 3.5, color: "#2563eb"},
+        "Queen": {x: 2.0, y: 3.2, color: "#9333ea"},
+        "Man": {x: 3.2, y: 1.8, color: "#0284c7"},
+        "Woman": {x: 3.0, y: 1.5, color: "#ec4899"},
+        "Apple": {x: -2.8, y: -1.5, color: "#dc2626"},
+        "Orange": {x: -2.5, y: -1.8, color: "#ea580c"},
+        "Cat": {x: -1.0, y: 2.5, color: "#16a34a"},
+        "Dog": {x: -0.8, y: 2.2, color: "#65a30d"}
+      };
+
+      function drawEmbedding() {
+        eCtx.clearRect(0, 0, eCanvas.width, eCanvas.height);
+        const originX = eCanvas.width / 2;
+        const originY = eCanvas.height / 2;
+        const scale = 40;
+
+        // 绘制坐标轴
+        eCtx.strokeStyle = '#e2e8f0';
+        eCtx.lineWidth = 1;
+        eCtx.beginPath();
+        eCtx.moveTo(0, originY); eCtx.lineTo(eCanvas.width, originY);
+        eCtx.moveTo(originX, 0); eCtx.lineTo(originX, eCanvas.height);
+        eCtx.stroke();
+
+        // 绘制所有点
+        for (const [w, pos] of Object.entries(wordVectors)) {
+          const sx = originX + pos.x * scale;
+          const sy = originY - pos.y * scale;
+
+          eCtx.fillStyle = pos.color;
+          eCtx.beginPath();
+          eCtx.arc(sx, sy, 6, 0, Math.PI * 2);
+          eCtx.fill();
+
+          eCtx.font = 'bold 12px Segoe UI, sans-serif';
+          eCtx.fillText(w, sx + 8, sy + 4);
+        }
+
+        // 获取选中的两个词
+        const wa = document.getElementById('word_a').value;
+        const wb = document.getElementById('word_b').value;
+        const va = wordVectors[wa];
+        const vb = wordVectors[wb];
+
+        if (va && vb) {
+          const sxa = originX + va.x * scale;
+          const sya = originY - va.y * scale;
+          const sxb = originX + vb.x * scale;
+          const syb = originY - vb.y * scale;
+
+          // 连线
+          eCtx.strokeStyle = '#2563eb';
+          eCtx.setLineDash([4, 4]);
+          eCtx.lineWidth = 2;
+          eCtx.beginPath();
+          eCtx.moveTo(originX, originY); eCtx.lineTo(sxa, sya);
+          eCtx.moveTo(originX, originY); eCtx.lineTo(sxb, syb);
+          eCtx.stroke();
+          eCtx.setLineDash([]);
+
+          // 计算余弦相似度
+          const dot = va.x * vb.x + va.y * vb.y;
+          const normA = Math.sqrt(va.x * va.x + va.y * va.y);
+          const normB = Math.sqrt(vb.x * vb.x + vb.y * vb.y);
+          const cosSim = dot / (normA * normB);
+          const angleDeg = (Math.acos(Math.max(-1, Math.min(1, cosSim))) * 180 / Math.PI);
+
+          document.getElementById('sim_disp').innerText = cosSim.toFixed(3);
+          document.getElementById('angle_disp').innerText = angleDeg.toFixed(1) + '°';
+        }
+      }
+
+      document.getElementById('word_a').addEventListener('change', drawEmbedding);
+      document.getElementById('word_b').addEventListener('change', drawEmbedding);
+      drawEmbedding();
+    </script>
+
+    <h2>5. 极小规模人工计算 (Embedding 查表走查)</h2>
+    <div class="logic-box">
+      <strong>已知条件：</strong><br/>
+      词表大小 $V=4$，特征维度 $D_{model}=3$。<br/>
+      Embedding 权重矩阵 $E$（本质就是一张二维浮点数组）：
+      $$E = \begin{bmatrix}
+      \text{ID 0:} & 0.1 & -0.5 & 0.8 \\
+      \text{ID 1:} & 1.2 & 0.0 & -0.3 \\
+      \text{ID 2:} & -0.9 & 0.4 & 0.7 \\
+      \text{ID 3:} & 0.5 & 0.5 & 0.0
+      \end{bmatrix}_{4 \times 3}$$
+      输入句子序列的 Token IDs：$X = \begin{bmatrix} 2 & 0 & 3 \end{bmatrix}$ (长度 $L=3$)<br/><br/>
+      <strong>查表输出矩阵 $H$（直接读取第 2、0、3 行）：</strong>
+      $$H = \begin{bmatrix}
+      E[2] \\ E[0] \\ E[3]
+      \end{bmatrix} = \begin{bmatrix}
+      -0.9 & 0.4 & 0.7 \\
+      0.1 & -0.5 & 0.8 \\
+      0.5 & 0.5 & 0.0
+      \end{bmatrix}_{3 \times 3}$$
+    </div>
+
+    <h2>6. Python / NumPy 极简代码实现</h2>
+    <pre><code class="language-python">import numpy as np
+
+# 1. 创建 Embedding 权重查找表 (Vocab=1000, Dim=4096)
+vocab_size = 1000
+d_model = 4096
+embedding_table = np.random.randn(vocab_size, d_model).astype(np.float32)
+
+# 2. 输入 Batch=2, SeqLen=3 的 Token ID 数组
+token_ids = np.array([[10, 42, 99],
+                      [5,  18, 500]], dtype=np.int64)
+
+# 3. 查表操作 (NumPy 数组高级花式索引)
+# 等价于 PyTorch 的 nn.Embedding(vocab_size, d_model)(token_ids)
+embedded_tensor = embedding_table[token_ids]
+
+print("输出张量 Shape:", embedded_tensor.shape)  # 输出: (2, 3, 4096)
+</code></pre>
+
+    <h2>7. 数学原理与物理直觉</h2>
+    <p>
+      在数学上，Embedding 查表操作等价于<strong>输入一个 One-Hot 稀疏独热向量与整个权重矩阵相乘</strong>：
+      $$[0, 0, 1, 0] \times E = E[2]$$
+      但在实际工程实现中，**绝对没有任何框架会真正执行这种极其低效的 One-Hot 稀疏矩阵乘法**，而是直接按地址偏移量（Offset）从连续内存中拷贝整行浮点数据！
+    </p>
+
+    <h2>8. 打开黑盒：真实工程细节 (内存访问与指针偏移)</h2>
+    <div class="card">
+      <strong>C/C++ 底层实现逻辑：</strong><br/>
+      在 <code>llama.cpp</code> 或纯 C 推理引擎中，Embedding 操作就是一条极其纯粹的 <code>memcpy</code>：
+      <pre><code>// 内存基地址 + ID * 维度 * sizeof(float)
+float* token_vec = &embedding_table[token_id * d_model];
+memcpy(output_buffer, token_vec, d_model * sizeof(float));</code></pre>
+      这是一个纯粹的 <strong>Memory-bound 随机内存读取操作</strong>。
+    </div>
+
+    <h2>9. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      如果一个大模型的词表大小为 $V=128000$，隐藏维度 $D_{model}=4096$，采用 <code>float16</code>（2 字节/浮点数）存储。<br/>
+      请问仅仅这一个 Embedding 查表矩阵，需要占用多少 MB 的显存？<br/>
+      <em>提示：计算 $128000 \times 4096 \times 2 \text{ Bytes}$。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="06_tokenization_and_bpe.html">← 上一节：1.1 Tokenization与BPE</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="08_sequence_models_bottleneck.html">下一节：1.3 传统序列模型瓶颈 →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

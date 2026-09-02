@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>4.3 KV Cache 机制与显存加速 - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 4.3 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="18_numpy_mini_gpt.html">← 4.2 纯 NumPy 手写 GPT</a> | 
+        <a href="20_gqa_and_flash_attention.html">4.4 GQA 与 FlashAttention →</a>
+      </div>
+    </div>
+
+    
+    <h1>4.3 KV Cache 机制与显存加速 (KV Cache & Memory Scaling)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>深入剖析大模型推理中的“第一核心性能生命线”——KV Cache，理解 Prefill（首字填充）与 Decode（自回归解码）两个截然不同的计算阶段，掌握显存容量精确计算公式。
+    </div>
+
+    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
+    <p>
+      在自回归文本生成中，当生成第 $t$ 个词时：
+      $$x_1, x_2, \dots, x_{t-1} \longrightarrow \text{模型} \longrightarrow x_t$$
+      由于因果掩码的存在，<strong>历史 Token 的 Key 和 Value 向量是完全固定、永远不会发生改变的！</strong><br/>
+      如果不做缓存，每生成 1 个新词，都要将过去所有 Token 的 QKV 重新投影一次（复杂度 $O(L^2)$）。<br/>
+      <strong>KV Cache 机制：把已经计算过的历史 Key 和 Value 直接持久化缓存在显存中！每生成 1 个新词，只需计算这 1 个新词的 Query，并与缓存好的历史 KV 做点积（复杂度降为 $O(L)$）！</strong>
+    </p>
+
+    <h2>2. Prefill 阶段 vs Decode 阶段</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>对比维度</th>
+          <th>Prefill 阶段 (首字处理 / 提示词编码)</th>
+          <th>Decode 阶段 (自回归逐字生成)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>输入张量长度</strong></td>
+          <td>全部 Prompt：$L = L_{prompt}$</td>
+          <td><strong>单个最新 Token：$L = 1$</strong></td>
+        </tr>
+        <tr>
+          <td><strong>计算特征</strong></td>
+          <td><strong>Compute-bound（算力受限）</strong>，大型 GEMM</td>
+          <td><strong>Memory-bound（显存带宽受限）</strong>，GEMV</td>
+        </tr>
+        <tr>
+          <td><strong>KV Cache 操作</strong></td>
+          <td>一次性计算全部 Prompt 的 KV 并<strong>写入 Cache</strong></td>
+          <td>读取全部历史 KV，计算后<strong>追加写入 1 个新 KV</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. 黑盒 JS 可交互动画：Prefill 与 Decode 阶段动态流水线</h2>
+    <p>
+      点击下方按钮，观察 KV 缓存槽位是如何从首字填充（Prefill）切换为逐字递增（Decode）的高效读写流水线的！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 KV Cache 显存插槽动态读写模拟器</div>
+      
+      <div class="control-panel">
+        <button class="btn" onclick="runPrefill()">1. 执行 Prefill 阶段 (写入前 4 个 Token)</button>
+        <button class="btn" onclick="stepDecode()" style="background: #16a34a;">2. 执行 Decode 阶段 (+1 新 Token)</button>
+        <button class="btn" onclick="resetKVCache()" style="background: #64748b;">重置缓存</button>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="kvcCanvas" width="500" height="260" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #fafafa;"></canvas>
+        <div style="flex: 1; min-width: 240px;">
+          <div class="logic-box" style="margin-top: 0;">
+            <strong>缓存池统计量：</strong><br/>
+            已缓存 Token 槽位: <span id="kv_slots_disp" style="font-weight: bold; color: #2563eb;">0 / 8</span><br/>
+            当前阶段: <span id="kv_phase_disp" style="font-weight: bold; color: #475569;">空闲</span><br/><br/>
+            <strong>节省算力比例：</strong><br/>
+            <span id="saved_flops_disp" style="font-size: 20px; font-weight: 800; color: #166534;">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const kvcCanvas = document.getElementById('kvcCanvas');
+      const kvcCtx = kvcCanvas.getContext('2d');
+      let cachedTokens = 0;
+
+      function drawKVSlots(highlightIndex) {
+        kvcCtx.clearRect(0, 0, kvcCanvas.width, kvcCanvas.height);
+        const maxSlots = 8;
+        const slotW = 46;
+        const spacing = 58;
+        const startX = 35;
+        const yK = 70;
+        const yV = 160;
+
+        kvcCtx.fillStyle = '#0f172a';
+        kvcCtx.font = 'bold 12px Segoe UI';
+        kvcCtx.textAlign = 'left';
+        kvcCtx.fillText('K Cache RAM:', startX, yK - 14);
+        kvcCtx.fillText('V Cache RAM:', startX, yV - 14);
+
+        for (let i = 0; i < maxSlots; i++) {
+          const x = startX + i * spacing;
+
+          kvcCtx.strokeStyle = (i < cachedTokens) ? '#2563eb' : '#cbd5e1';
+          kvcCtx.fillStyle = (i === highlightIndex) ? '#fef08a' : ((i < cachedTokens) ? '#eff6ff' : '#ffffff');
+          kvcCtx.lineWidth = (i < cachedTokens) ? 2 : 1;
+          kvcCtx.beginPath();
+          kvcCtx.roundRect(x, yK, slotW, 50, 4);
+          kvcCtx.fill(); kvcCtx.stroke();
+
+          kvcCtx.strokeStyle = (i < cachedTokens) ? '#16a34a' : '#cbd5e1';
+          kvcCtx.fillStyle = (i === highlightIndex) ? '#fef08a' : ((i < cachedTokens) ? '#f0fdf4' : '#ffffff');
+          kvcCtx.beginPath();
+          kvcCtx.roundRect(x, yV, slotW, 50, 4);
+          kvcCtx.fill(); kvcCtx.stroke();
+
+          kvcCtx.fillStyle = (i < cachedTokens) ? '#0f172a' : '#94a3b8';
+          kvcCtx.font = '10px Consolas';
+          kvcCtx.textAlign = 'center';
+          kvcCtx.fillText(`T${i}`, x + slotW/2, yK + 28);
+          kvcCtx.fillText(`T${i}`, x + slotW/2, yV + 28);
+        }
+      }
+
+      function runPrefill() {
+        cachedTokens = 4;
+        drawKVSlots(-1);
+        document.getElementById('kv_slots_disp').innerText = "4 / 8";
+        document.getElementById('kv_phase_disp').innerText = "Prefill 批量写入完成";
+        document.getElementById('kv_phase_disp').style.color = "#2563eb";
+        document.getElementById('saved_flops_disp').innerText = "50.0%";
+      }
+
+      function stepDecode() {
+        if (cachedTokens >= 8) return;
+        cachedTokens++;
+        drawKVSlots(cachedTokens - 1);
+        document.getElementById('kv_slots_disp').innerText = `${cachedTokens} / 8`;
+        document.getElementById('kv_phase_disp').innerText = `Decode 追加生成 T${cachedTokens-1}`;
+        document.getElementById('kv_phase_disp').style.color = "#166534";
+        const saved = (1.0 - (1.0 / cachedTokens)) * 100;
+        document.getElementById('saved_flops_disp').innerText = saved.toFixed(1) + '%';
+      }
+
+      function resetKVCache() {
+        cachedTokens = 0;
+        drawKVSlots(-1);
+        document.getElementById('kv_slots_disp').innerText = "0 / 8";
+        document.getElementById('kv_phase_disp').innerText = "已重置";
+        document.getElementById('saved_flops_disp').innerText = "0%";
+      }
+
+      drawKVSlots(-1);
+    </script>
+
+    <h2>4. 工业级 KV Cache 显存容量精确计算公式</h2>
+    <div class="logic-box">
+      <strong>显存占用公式（以字节为单位）：</strong><br/>
+      $$\text{KV Cache Size} = 2 \times (\text{Key} + \text{Value}) \times \text{Layers} \times \text{Heads}_{kv} \times d_k \times \text{SeqLen} \times \text{BytesPerElem} \times \text{BatchSize}$$
+      <br/>
+      <strong>实战案例（LLaMA-3 8B, 32 层, 8 个 KV 头, $d_k=128$, FP16 每元素 2 字节）：</strong><br/>
+      单个 Token 产生的 KV 缓存显存开销：
+      $$2 \times 32 \times 8 \times 128 \times 2 \text{ Bytes} = 131,072 \text{ Bytes} \approx 0.125 \text{ MB / Token}$$
+      当并发请求 $Batch=16$，上下文长度 $SeqLen=8192$ 时：
+      $$\text{总 KV 缓存} = 16 \times 8192 \times 0.125 \text{ MB} \approx \mathbf{16.38\text{ GB!}}$$
+      <span class="mark-danger">惊人事实：仅仅存放中间 KV 缓存所占用的显存，就已经超过了 8B 模型权重本身的显存占用（约 15GB）！</span>
+    </div>
+
+    <h2>5. 打开黑盒：真实工程细节 (PagedAttention 与 vLLM 革命)</h2>
+    <div class="card">
+      <strong>操作系统的分页虚拟内存启示：</strong><br/>
+      在传统的 PyTorch 实现中，必须为每个请求提前连续预分配最大长度（如 8k）的显存，导致大量内部碎片（高达 60%~80% 显存被白白浪费）。<br/>
+      <strong>vLLM 开创的 PagedAttention 借鉴了 Linux 操作系统的虚拟内存分页机制</strong>：将 KV Cache 切分为固定大小的内存页（Page，如 16 个 Token 一页），按需动态分配不连续物理显存，将显存浪费率从 70% 骤降到 4% 以下，直接让大模型服务并发吞吐量飙升了整整 4 倍！
+    </div>
+
+    <h2>6. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      为什么在 Decode 阶段，不需要缓存 Query（Q）张量？<br/>
+      <em>提示：因为 Query 仅仅代表“当前时刻想要查找什么”，用完即抛，后续生成下一个词时会使用全新产生的下一个 Query。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="18_numpy_mini_gpt.html">← 上一节：4.2 纯 NumPy 手写 GPT</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="20_gqa_and_flash_attention.html">下一节：4.4 GQA 与 FlashAttention →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

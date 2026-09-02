@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>4.4 GQA 与 FlashAttention 思想 - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 4.4 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="19_kv_cache_mechanism.html">← 4.3 KV Cache 机制</a> | 
+        <a href="21_quantization_and_deployment.html">4.5 模型量化与边缘部署 →</a>
+      </div>
+    </div>
+
+    
+    <h1>4.4 GQA 与 FlashAttention 思想 (GQA & FlashAttention)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>理解现代大模型是如何在架构层（GQA 分组查询注意力）与硬件层（FlashAttention IO 优化）两路并发，彻底攻克长上下文显存爆炸与 GPU 访存带宽瓶颈的。
+    </div>
+
+    <h2>1. 架构演进：MHA $\to$ MQA $\to$ GQA</h2>
+    <ul>
+      <li><strong>MHA (Multi-Head Attention, 2017)</strong>：每个 Query 头配 1 个独立的 Key 和 Value 头（KV 头数 = 32）。缺点：KV Cache 极其庞大。</li>
+      <li><strong>MQA (Multi-Query Attention, 2019)</strong>：所有 Query 头强行共享 1 个单调的 Key 和 Value 头（KV 头数 = 1）。优点：显存暴降 32 倍；缺点：模型容量与表达精度受损。</li>
+      <li><strong>GQA (Grouped-Query Attention, 现代主流 LLaMA-3 / Mistral 标配)</strong>：折中方案！例如 32 个 Query 头分为 8 组，<strong>每 4 个 Query 头共享 1 个 KV 头</strong>（KV 头数 = 8）。既保全了极高的语义精度，又将 KV 显存开销直接削减为原来的 $\frac{1}{4}$！</li>
+    </ul>
+
+    <h2>2. FlashAttention 核心哲学：向 GPU 存储层级要性能</h2>
+    <div class="logic-box">
+      <strong>GPU 的金字塔存储瓶颈：</strong><br/>
+      SRAM 片上高速缓存（容量极小 ~数十KB，但速度高达 19 TB/s） $\gg$ HBM 全局大显存（容量大 80GB，但速度仅 2~3 TB/s，慢了将近 10 倍！）。<br/>
+      传统 Attention 频繁将超大 $L \times L$ 中间矩阵从 SRAM 写回 HBM 显存，导致 GPU 核心长时间卡在<strong>内存读写等待</strong>上。<br/>
+      <strong>FlashAttention 核心思想：分块切片（Tiling）+ 在线 Softmax 动态更新（Online Softmax）！</strong><br/>
+      将 $Q, K, V$ 切成一个个小 Tile 完全装入 SRAM，在高速缓存内一步算出局部的 Attention 聚合结果，**全程完全不生成、不写回庞大的 $L \times L$ 注意力矩阵！**
+    </div>
+
+    <h2>3. 黑盒 JS 可交互动画：GPU 存储层级搬运开销对比模拟</h2>
+    <p>
+      点击下方按钮，对比传统 Attention 与 FlashAttention 在 GPU 存储层级中的数据搬运流向与耗时！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 FlashAttention 硬件 IO 优化流向模拟器</div>
+      
+      <div class="control-panel">
+        <button class="btn" onclick="runIOComparison(false)" style="background: #dc2626;">1. 传统 Attention (频繁往返 HBM)</button>
+        <button class="btn" onclick="runIOComparison(true)" style="background: #16a34a;">2. FlashAttention (SRAM 片内分块流式计算)</button>
+      </div>
+
+      <canvas id="faCanvas" width="700" height="260" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; display: block; margin: 0 auto;"></canvas>
+    </div>
+
+    <script>
+      const faC = document.getElementById('faCanvas');
+      const faCtx = faC.getContext('2d');
+
+      function drawStorageLayout(isFlash) {
+        faCtx.clearRect(0, 0, faC.width, faC.height);
+
+        faCtx.fillStyle = '#f0fdf4';
+        faCtx.strokeStyle = '#16a34a';
+        faCtx.lineWidth = 2;
+        faCtx.beginPath();
+        faCtx.roundRect(80, 30, 540, 70, 8);
+        faCtx.fill(); faCtx.stroke();
+        faCtx.fillStyle = '#166534';
+        faCtx.font = 'bold 13px Segoe UI';
+        faCtx.textAlign = 'left';
+        faCtx.fillText('SRAM (GPU 片上超高速缓存 ~19 TB/s)', 100, 55);
+
+        faCtx.fillStyle = '#eff6ff';
+        faCtx.strokeStyle = '#2563eb';
+        faCtx.beginPath();
+        faCtx.roundRect(80, 160, 540, 70, 8);
+        faCtx.fill(); faCtx.stroke();
+        faCtx.fillStyle = '#1e40af';
+        faCtx.fillText('HBM (GPU 全局大显存 ~2 TB/s)', 100, 185);
+
+        if (!isFlash) {
+          faCtx.strokeStyle = '#dc2626';
+          faCtx.lineWidth = 3;
+          faCtx.beginPath();
+          faCtx.moveTo(250, 100); faCtx.lineTo(250, 160);
+          faCtx.moveTo(450, 160); faCtx.lineTo(450, 100);
+          faCtx.stroke();
+          faCtx.fillStyle = '#dc2626';
+          faCtx.font = 'bold 11px Consolas';
+          faCtx.textAlign = 'center';
+          faCtx.fillText('大量写入中间 L*L 矩阵', 250, 135);
+          faCtx.fillText('再次读回中间矩阵', 450, 135);
+        } else {
+          faCtx.strokeStyle = '#16a34a';
+          faCtx.lineWidth = 4;
+          faCtx.beginPath();
+          faCtx.arc(350, 65, 18, 0, Math.PI * 2);
+          faCtx.stroke();
+          faCtx.fillStyle = '#166534';
+          faCtx.font = 'bold 12px Segoe UI';
+          faCtx.textAlign = 'center';
+          faCtx.fillText('Tile 分块在线 Softmax 闭环计算 (零 HBM 往返!)', 350, 95);
+        }
+      }
+
+      function runIOComparison(isFlash) {
+        drawStorageLayout(isFlash);
+      }
+
+      drawStorageLayout(true);
+    </script>
+
+    <h2>4. 打开黑盒：真实工程细节 (FlashAttention-2 & FlashAttention-3)</h2>
+    <div class="card">
+      <strong>硬件演进与算子重塑：</strong><br/>
+      FlashAttention 的作者 Tri Dao 在 2023~2024 年相继推出了 <strong>FlashAttention-2 与 3</strong>，针对 NVIDIA Hopper 架构（H100/H200）的 Tensor Memory Accelerator (TMA) 和异步流水线重写了底层 Warp 级调度，实现了高达 75% 的硬件极限利用率（浮点吞吐接近 700 TFLOPS）！
+    </div>
+
+    <h2>5. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      FlashAttention 带来的计算结果与传统标准 Attention 在数学上是完全完全精确等价的，还是只是一个近似？<br/>
+      <em>提示：数学上 100% 精确等价！它完全不损失任何精度，纯粹是通过算法重排消除了不必要的显存 IO 搬运。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="19_kv_cache_mechanism.html">← 上一节：4.3 KV Cache 机制</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="21_quantization_and_deployment.html">下一节：4.5 模型量化与边缘部署 →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

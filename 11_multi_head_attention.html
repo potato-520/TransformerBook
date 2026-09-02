@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2.3 多头注意力机制 (Multi-Head) - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 2.3 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="10_scaled_dot_product_attention.html">← 2.2 缩放点积注意力</a> | 
+        <a href="12_positional_encoding_and_rope.html">3.1 位置编码与RoPE →</a>
+      </div>
+    </div>
+
+    
+    <h1>2.3 多头注意力机制 (Multi-Head Attention, MHA)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>理解为什么单个 Attention 不够用，掌握多头注意力（MHA）的“特征子空间多路复用”思想，彻底吃透张量维度的切分（Split）、并行计算与合并重组（Concat & Projection）流水线。
+    </div>
+
+    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
+    <p>
+      在处理自然语言时，一个单词在句子中往往承担着<strong>多重不同的语境关系</strong>：
+    </p>
+    <ul>
+      <li><strong>语法依赖头（Head 1）</strong>：关注主谓宾搭配（例如 <code>"The cat"</code> 关注动词 <code>"sat"</code>）；</li>
+      <li><strong>指代消解头（Head 2）</strong>：关注代词指代（例如 <code>"it"</code> 锁定 <code>"animal"</code>）；</li>
+      <li><strong>时空因果头（Head 3）</strong>：关注时间与地点状语。</li>
+    </ul>
+    <p>
+      <strong>多头注意力（Multi-Head Attention）</strong>通过将总特征维度 $D_{model}$ 切分为 $H$ 个互不干扰的独立子空间（每个子空间维度 $d_k = D_{model} / H$），让各个 Head 能够并行关注不同维度的模式。
+    </p>
+
+    <h2>2. Tensor Shape 全链路流转轨迹</h2>
+    <div class="logic-box">
+      <strong>张量变形记（Tensor Reshape Pipeline）：</strong><br/>
+      1. 输入张量 $X$：<span class="shape-badge">[B, L, D]</span> (例如 Batch=2, SeqLen=512, Dim=4096)<br/>
+      2. 线性投影 QKV：<span class="shape-badge">[B, L, D]</span> $\to$ 维度切分与转置：<span class="shape-badge">[B, H, L, d_k]</span> (例如 Head=32, $d_k=128$)<br/>
+      3. 并行多头 Attention：$Q \times K^T \implies$ <span class="shape-badge">[B, H, L, L]</span> $\times V \implies$ <span class="shape-badge">[B, H, L, d_k]</span><br/>
+      4. 多头拼接（Concat）：转置回 <span class="shape-badge">[B, L, H \cdot d_k] = [B, L, D]</span><br/>
+      5. 最终输出线性投影 $W_O$：<span class="shape-badge">[B, L, D]</span> $\times [D, D] \implies$ <span class="shape-badge">[B, L, D]</span>
+    </div>
+
+    <h2>3. 黑盒 JS 可交互动画：多头分流与重组可视化</h2>
+    <p>
+      下方展示了一个将 $D_{model}=8$ 的输入切分为 $H=2$ 个独立注意力头（每个 Head $d_k=4$），并行计算后再拼接投影的全过程：
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 多头注意力张量流动模拟器</div>
+      
+      <div class="control-panel">
+        <button class="btn" onclick="animateMHA()">▶ 播放多头切分与合并数据流</button>
+      </div>
+
+      <canvas id="mhaCanvas" width="700" height="300" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; display: block; margin: 0 auto;"></canvas>
+    </div>
+
+    <script>
+      const mCanvas = document.getElementById('mhaCanvas');
+      const mCtx = mCanvas.getContext('2d');
+
+      function drawMHALayout(progress) {
+        mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+
+        // 1. 输入 X [L, D]
+        mCtx.fillStyle = '#eff6ff';
+        mCtx.strokeStyle = '#2563eb';
+        mCtx.lineWidth = 2;
+        mCtx.beginPath();
+        mCtx.roundRect(40, 100, 80, 100, 6);
+        mCtx.fill(); mCtx.stroke();
+        mCtx.fillStyle = '#1e40af';
+        mCtx.font = 'bold 12px Consolas';
+        mCtx.textAlign = 'center';
+        mCtx.fillText('Input X', 80, 145);
+        mCtx.fillText('[L, 4096]', 80, 165);
+
+        // 2. Head 1 与 Head 2 分流
+        const h1Y = 50, h2Y = 170;
+
+        // Head 1
+        mCtx.fillStyle = '#f0fdf4';
+        mCtx.strokeStyle = '#16a34a';
+        mCtx.beginPath();
+        mCtx.roundRect(260, h1Y, 150, 70, 6);
+        mCtx.fill(); mCtx.stroke();
+        mCtx.fillStyle = '#166534';
+        mCtx.fillText('Head 1 (语法特征)', 335, h1Y + 30);
+        mCtx.fillText('Q1, K1, V1 [L, 128]', 335, h1Y + 50);
+
+        // Head 2
+        mCtx.fillStyle = '#fdf4ff';
+        mCtx.strokeStyle = '#9333ea';
+        mCtx.beginPath();
+        mCtx.roundRect(260, h2Y, 150, 70, 6);
+        mCtx.fill(); mCtx.stroke();
+        mCtx.fillStyle = '#581c87';
+        mCtx.fillText('Head 2 (指代特征)', 335, h2Y + 30);
+        mCtx.fillText('Q2, K2, V2 [L, 128]', 335, h2Y + 50);
+
+        // 3. Concat & Output
+        mCtx.fillStyle = '#eff6ff';
+        mCtx.strokeStyle = '#2563eb';
+        mCtx.beginPath();
+        mCtx.roundRect(540, 100, 100, 100, 6);
+        mCtx.fill(); mCtx.stroke();
+        mCtx.fillStyle = '#1e40af';
+        mCtx.fillText('Concat & Wo', 590, 145);
+        mCtx.fillText('Output [L, 4096]', 590, 165);
+
+        // 连线
+        mCtx.strokeStyle = '#94a3b8';
+        mCtx.setLineDash([4, 4]);
+        mCtx.beginPath();
+        mCtx.moveTo(120, 150); mCtx.lineTo(260, h1Y + 35);
+        mCtx.moveTo(120, 150); mCtx.lineTo(260, h2Y + 35);
+        mCtx.moveTo(410, h1Y + 35); mCtx.lineTo(540, 150);
+        mCtx.moveTo(410, h2Y + 35); mCtx.lineTo(540, 150);
+        mCtx.stroke();
+        mCtx.setLineDash([]);
+      }
+
+      function animateMHA() {
+        let p = 0;
+        const timer = setInterval(() => {
+          p += 0.05;
+          drawMHALayout(p);
+          if (p >= 1.0) clearInterval(timer);
+        }, 30);
+      }
+
+      drawMHALayout(1.0);
+    </script>
+
+    <h2>4. Python / NumPy 极简多头注意力实现</h2>
+    <pre><code class="language-python">import numpy as np
+
+class MultiHeadAttention:
+    def __init__(self, d_model=4096, n_heads=32):
+        self.d_model = d_model
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads  # 128
+        
+        self.W_q = np.random.randn(d_model, d_model) * 0.02
+        self.W_k = np.random.randn(d_model, d_model) * 0.02
+        self.W_v = np.random.randn(d_model, d_model) * 0.02
+        self.W_o = np.random.randn(d_model, d_model) * 0.02
+
+    def forward(self, x):
+        B, L, D = x.shape
+        
+        # 1. 投影产生 Q, K, V
+        q = np.dot(x, self.W_q)
+        k = np.dot(x, self.W_k)
+        v = np.dot(x, self.W_v)
+        
+        # 2. 变换形状切分多头: [B, L, H, d_k] -> [B, H, L, d_k]
+        q = q.reshape(B, L, self.n_heads, self.d_k).transpose(0, 2, 1, 3)
+        k = k.reshape(B, L, self.n_heads, self.d_k).transpose(0, 2, 1, 3)
+        v = v.reshape(B, L, self.n_heads, self.d_k).transpose(0, 2, 1, 3)
+        
+        # 3. 缩放点积注意力 [B, H, L, L]
+        scores = np.matmul(q, k.transpose(0, 1, 3, 2)) / np.sqrt(self.d_k)
+        exp_s = np.exp(scores - np.max(scores, axis=-1, keepdims=True))
+        attn = exp_s / np.sum(exp_s, axis=-1, keepdims=True)
+        
+        # 4. 加权输出: [B, H, L, d_k]
+        out_heads = np.matmul(attn, v)
+        
+        # 5. 拼接合并回 [B, L, D]
+        concat_out = out_heads.transpose(0, 2, 1, 3).reshape(B, L, self.d_model)
+        
+        # 6. 最终输出投影
+        final_output = np.dot(concat_out, self.W_o)
+        return final_output
+
+mha = MultiHeadAttention(d_model=64, n_heads=4)
+fake_input = np.random.randn(2, 8, 64)
+out = mha.forward(fake_input)
+print("多头输出张量 Shape:", out.shape)
+</code></pre>
+
+    <h2>5. 打开黑盒：真实工程细节 (为什么各头不单独建矩阵？)</h2>
+    <div class="card">
+      <strong>内存连续性与 Strided View：</strong><br/>
+      在 C++ / PyTorch 源码中，分头操作<strong>完全不需要进行任何显存数据搬运（零拷贝）</strong>！<br/>
+      它仅仅是通过修改张量的步长（Strides）和视图（View），将连续的 4096 维浮点数组在逻辑上解释为 <code>[32, 128]</code> 的二维矩阵，从而保证了底层 GPU L1/L2 Cache 的极速行连续命中！
+    </div>
+
+    <h2>6. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      保持总维度 $D_{model}=4096$ 不变，如果我们将头数 $H$ 从 32 头增加到 64 头（每个头的维度从 128 降到 64），注意力机制的理论计算量（FLOPs）会发生改变吗？<br/>
+      <em>提示：不会改变！因为总计算量始终是 $O(B \cdot L^2 \cdot D_{model})$。但更多的 Head 会带来更丰富的特征子空间抽取能力。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="10_scaled_dot_product_attention.html">← 上一节：2.2 缩放点积注意力</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="12_positional_encoding_and_rope.html">下一节：3.1 位置编码与RoPE →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

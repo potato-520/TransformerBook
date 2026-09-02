@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>0.4 Loss测量尺与交叉熵 - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 0.4 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="03_activation_functions.html">← 0.3 激活函数的本质</a> | 
+        <a href="05_gradients_and_backpropagation.html">0.5 梯度下降与反传 →</a>
+      </div>
+    </div>
+
+    
+    <h1>0.4 Loss 测量尺与交叉熵 (Loss Functions & Cross-Entropy)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>理解神经网络是如何用数学标尺量化“预测错误程度”的，掌握回归任务中的 MSE 与大模型 Token 预测中的交叉熵（Cross-Entropy / NLL Loss）物理直觉。
+    </div>
+
+    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
+    <p>
+      在闭环控制系统（如 PID 控制器）中，我们必须计算<strong>目标值与当前反馈值的偏差 $e(t) = r(t) - y(t)$</strong>，才能驱动执行器进行修正。<br/>
+      在神经网络与大模型中，<strong>损失函数（Loss Function）就是这把核心的“误差测量尺”</strong>。它将高维度的预测张量与真实标签对比，输出一个单一的非负标量 Loss，作为后续反向传播调整参数的唯一目标。
+    </p>
+
+    <h2>2. 输入与输出 Tensor Shape</h2>
+    <ul>
+      <li><strong>预测 Logits $Z$</strong>：<span class="shape-badge">Shape: [B, V]</span>。$B$ 为 Batch Size，$V$ 为词表大小（如 32000）。</li>
+      <li><strong>真实标签 Target $Y$</strong>：<span class="shape-badge">Shape: [B]</span>。包含每个样本正确的 Token ID（整数索引）。</li>
+      <li><strong>输出 Loss $\mathcal{L}$</strong>：<span class="shape-badge">Shape: [1]</span>（标量 float32）。</li>
+    </ul>
+
+    <h2>3. 交叉熵 Loss 的数学本质</h2>
+    <p>
+      交叉熵 Loss 本质上是<strong>负对数似然（Negative Log-Likelihood）</strong>：
+      $$P_i = \text{Softmax}(Z)_i = \frac{e^{z_i}}{\sum_{j=1}^V e^{z_j}}$$
+      $$\mathcal{L} = -\log(P_{\text{target}})$$
+    </p>
+
+    <h2>4. 黑盒 JS 可交互动画：模型自信度与 Loss 惩罚爆炸</h2>
+    <p>
+      假设大模型在预测下一个词时，真实目标词为 <code>"GPT"</code>。<br/>
+      请拖动滑块调节模型分配给目标词的概率 $P_{\text{target}}$，观察交叉熵 Loss 的非线性惩罚曲线！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 交叉熵 Loss 惩罚曲线仪表盘</div>
+      
+      <div class="control-panel">
+        <div class="control-group">
+          <label>目标词预测概率 $P_{\text{target}}$:</label>
+          <input type="range" id="prob_slider" min="0.001" max="0.999" step="0.001" value="0.5">
+          <span id="prob_val" style="font-family: Consolas; font-weight: bold; width: 50px;">0.500</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="lossCanvas" width="500" height="320" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #fafafa;"></canvas>
+        <div style="flex: 1; min-width: 240px;">
+          <div class="logic-box" style="margin-top: 0;">
+            <strong>当前预测状态：</strong><br/>
+            目标词概率：<span id="p_disp" style="font-family: Consolas; font-weight: bold;">50.0%</span><br/>
+            计算公式：$\mathcal{L} = -\ln(P)$<br/><br/>
+            <strong>产生 Loss 值：</strong><br/>
+            <span id="loss_disp" style="font-size: 24px; font-weight: 800; color: #dc2626;">0.693</span>
+          </div>
+          <p style="font-size: 13.5px; color: #64748b;">
+            💡 <strong>物理直觉</strong>：当模型预测完全正确（$P \to 1.0$）时，$\text{Loss} \to 0$；但如果模型极为自信地猜错了（$P \to 0.001$），Loss 将飙升至 $6.9$ 以上，向网络施加巨大的梯度惩罚修正！
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const lCanvas = document.getElementById('lossCanvas');
+      const lCtx = lCanvas.getContext('2d');
+
+      function drawLoss() {
+        const p = parseFloat(document.getElementById('prob_slider').value);
+        const loss = -Math.log(p);
+
+        document.getElementById('prob_val').innerText = p.toFixed(3);
+        document.getElementById('p_disp').innerText = (p * 100).toFixed(1) + '%';
+        document.getElementById('loss_disp').innerText = loss.toFixed(3);
+
+        lCtx.clearRect(0, 0, lCanvas.width, lCanvas.height);
+        const padLeft = 40, padBottom = 30;
+        const w = lCanvas.width - padLeft - 20;
+        const h = lCanvas.height - padBottom - 20;
+
+        // 坐标轴
+        lCtx.strokeStyle = '#cbd5e1';
+        lCtx.lineWidth = 1;
+        lCtx.beginPath();
+        lCtx.moveTo(padLeft, 10); lCtx.lineTo(padLeft, lCanvas.height - padBottom);
+        lCtx.lineTo(lCanvas.width - 10, lCanvas.height - padBottom);
+        lCtx.stroke();
+
+        // 绘制 -ln(p) 曲线
+        lCtx.strokeStyle = '#2563eb';
+        lCtx.lineWidth = 3;
+        lCtx.beginPath();
+        for (let i = 0; i <= 100; i++) {
+          const curP = 0.01 + (i / 100) * 0.99;
+          const curL = -Math.log(curP);
+          const px = padLeft + curP * w;
+          const py = (lCanvas.height - padBottom) - (curL / 5.0) * h;
+          if (i === 0) lCtx.moveTo(px, py);
+          else lCtx.lineTo(px, py);
+        }
+        lCtx.stroke();
+
+        // 绘制当前点
+        const curX = padLeft + p * w;
+        const curY = (lCanvas.height - padBottom) - (loss / 5.0) * h;
+        lCtx.fillStyle = '#dc2626';
+        lCtx.beginPath();
+        lCtx.arc(curX, Math.max(10, curY), 6, 0, Math.PI * 2);
+        lCtx.fill();
+      }
+
+      document.getElementById('prob_slider').addEventListener('input', drawLoss);
+      drawLoss();
+    </script>
+
+    <h2>5. 极小规模人工计算 (3 分类交叉熵手算)</h2>
+    <div class="logic-box">
+      <strong>已知条件：</strong><br/>
+      真实标签 Target ID = <code>0</code>（第 0 类为正确答案）<br/>
+      模型输出未归一化 Logits：$Z = \begin{bmatrix} 2.0 & 1.0 & 0.1 \end{bmatrix}$<br/><br/>
+      <strong>第一步：Softmax 归一化为概率</strong><br/>
+      $e^{2.0} \approx 7.389, \quad e^{1.0} \approx 2.718, \quad e^{0.1} \approx 1.105$<br/>
+      总和 $\sum = 7.389 + 2.718 + 1.105 = 11.212$<br/>
+      概率分布：$P = \begin{bmatrix} \frac{7.389}{11.212} & \frac{2.718}{11.212} & \frac{1.105}{11.212} \end{bmatrix} \approx \begin{bmatrix} 0.659 & 0.242 & 0.099 \end{bmatrix}$<br/><br/>
+      <strong>第二步：计算负对数似然 Loss</strong><br/>
+      目标类（index 0）的概率为 $P_0 = 0.659$<br/>
+      $$\mathcal{L} = -\ln(0.659) \approx 0.417$$
+    </div>
+
+    <h2>6. Python / NumPy 极简代码实现 (含数值防溢出技巧)</h2>
+    <pre><code class="language-python">import numpy as np
+
+def cross_entropy_loss(logits: np.ndarray, target_idx: int):
+    # 1. 减去最大值防溢出
+    shifted = logits - np.max(logits)
+    exp_z = np.exp(shifted)
+    probs = exp_z / np.sum(exp_z)
+    
+    # 2. 负对数似然
+    p_target = probs[target_idx]
+    loss = -np.log(p_target)
+    return float(loss), probs
+
+z_test = np.array([2.0, 1.0, 0.1])
+target = 0
+loss_val, p_dist = cross_entropy_loss(z_test, target)
+
+print("概率分布:", np.round(p_dist, 4))
+print(f"交叉熵 Loss: {loss_val:.4f}")
+# 概率分布: [0.659  0.2424 0.0986], 交叉熵 Loss: 0.4170
+</code></pre>
+
+    <h2>7. 数学原理与物理直觉</h2>
+    <p>
+      为什么大模型预测 Token 一律采用交叉熵而不是均方误差（MSE）？
+    </p>
+    <ul>
+      <li><strong>信息论含义</strong>：交叉熵衡量的是用模型估计的分布 $P$ 去编码真实分布 $Q$ 时，平均所需要的额外比特数（Surprise / 困惑度 Perplexity 的对数形式）。</li>
+      <li><strong>梯度特性</strong>：$\frac{\partial \mathcal{L}}{\partial z_i} = P_i - Y_i$。其导数形式极其优雅直接——<strong>预测概率与真实标签的直接差值</strong>，完全没有 Sigmoid 在饱和区导致的梯度消失问题！</li>
+    </ul>
+
+    <h2>8. 打开黑盒：真实工程细节 (LogSumExp 技巧)</h2>
+    <div class="card">
+      <strong>浮点数溢出与 LogSumExp：</strong><br/>
+      在真实 CUDA 实现中，如果某个 Logit $z = 1000$，直接执行 <code>exp(1000)</code> 会在 IEEE-754 浮点数中瞬间产生 <code>+inf</code>，导致整个 Batch 的 Loss 变为 <code>NaN</code>。<br/>
+      PyTorch 的 <code>F.cross_entropy</code> 内部一律使用数学等价的 <span class="mark-concept">LogSumExp 技巧</span>：
+      $$\log \sum e^{z_i} = c + \log \sum e^{z_i - c} \quad (\text{取 } c = \max(z))$$
+    </div>
+
+    <h2>9. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      在预训练 GPT 时，若词表大小 $V = 32000$，在完全没有学习的随机初始化状态下，模型对所有 Token 的预测概率均等（$P_i = \frac{1}{32000}$）。<br/>
+      请问训练刚开始的第一步，Loss 理论值应该精确等于多少？<br/>
+      <em>提示：计算 $-\ln(1/32000) = \ln(32000) \approx 10.37$。这也是工程师快速校验代码是否写对的“金标准（Sanity Check）”。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="03_activation_functions.html">← 上一节：0.3 激活函数的本质</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="05_gradients_and_backpropagation.html">下一节：0.5 梯度下降与反传 →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>

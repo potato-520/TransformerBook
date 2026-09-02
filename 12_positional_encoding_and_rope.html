@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3.1 位置编码与 RoPE - Transformer & LLM 交互式教材</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 28px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* 顶部导航与元信息 */
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .nav-header a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav-header a:hover {
+      text-decoration: underline;
+    }
+
+    .chapter-tag {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      font-size: 21px;
+      color: #0f172a;
+      margin-top: 2.2em;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 17px;
+      color: #1e293b;
+      margin-top: 1.5em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p, li {
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 32px 0;
+    }
+
+    /* ==========================================
+       2. 语义标注与提示框
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       3. 代码与表格
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-family: Consolas, Monaco, monospace;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ==========================================
+       4. 交互式卡片与 Canvas 容器
+       ========================================== */
+    .interactive-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 22px;
+      margin: 22px 0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    .interactive-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    input[type="range"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav-header">
+      <div>
+        <span class="chapter-tag">第 3.1 节</span>
+        <a href="index.html">← 返回目录</a>
+      </div>
+      <div>
+        <a href="11_multi_head_attention.html">← 2.3 多头注意力机制</a> | 
+        <a href="13_causal_mask.html">3.2 Causal Mask 因果掩码 →</a>
+      </div>
+    </div>
+
+    
+    <h1>3.1 位置编码与 RoPE (Positional Encoding & Rotary Embedding)</h1>
+    <div class="card">
+      <strong>本节目标：</strong>理解为什么 Attention 天生是无序的（集合运算），掌握从早期正余弦绝对位置编码到现代大模型（LLaMA/Qwen/Mistral）标配 RoPE（旋转位置编码）的数学演进与复数旋转几何直觉。
+    </div>
+
+    <h2>1. 它解决什么问题？ (工程师视角黑盒引入)</h2>
+    <p>
+      在自注意力点积计算中：
+      $$S_{ij} = \frac{q_i \cdot k_j}{\sqrt{d_k}}$$
+      如果我们打乱输入序列的顺序（例如将 <code>"我 吃 苹果"</code> 打乱成 <code>"苹果 吃 我"</code>），每个 Token 之间的相对点积打分<strong>完全不会发生任何改变</strong>！<br/>
+      <span class="mark-caution">自注意力机制本质上是一种无序的“集合操作（Set Operation）”</span>。必须在输入特征中主动注入<strong>位置信息（Position Information）</strong>。
+    </p>
+
+    <h2>2. 演进历程：从绝对位置到相对旋转 (RoPE)</h2>
+    <ul>
+      <li><strong>绝对位置编码（Absolute PE, 经典 Transformer/GPT-2）</strong>：直接在 Embedding 向量上加上一个正弦波位置向量 $X_{pos} = X + P$。缺点：外推性差，无法直接体现相对距离。</li>
+      <li><strong>RoPE（Rotary Position Embedding, 现代 LLM 标配）</strong>：不改变向量模长，而是<strong>将 2D 特征平面上的向量按位置序号 $m$ 逆时针旋转 $m\theta$ 角度</strong>！
+        $$R_{\Theta, m} \cdot \vec{x} = \begin{pmatrix} \cos m\theta & -\sin m\theta \\ \sin m\theta & \cos m\theta \end{pmatrix} \begin{pmatrix} x_1 \\ x_2 \end{pmatrix}$$
+      </li>
+    </ul>
+
+    <h2>3. 为什么 RoPE 如此神奇？ (相对位置内积恒等式)</h2>
+    <div class="logic-box">
+      <strong>RoPE 的内积不变性定理：</strong><br/>
+      位置为 $m$ 的 Query 与位置为 $n$ 的 Key 旋转后的点积，仅取决于它们的<strong>相对距离 $(m - n)$</strong>：
+      $$\langle R_m \vec{q}, R_n \vec{k} \rangle = \vec{q}^T R_m^T R_n \vec{k} = \vec{q}^T R_{n - m} \vec{k}$$
+      这完美保留了相对距离信息，并且随着相对距离增加，内积自然衰减！
+    </div>
+
+    <h2>4. 黑盒 JS 可交互动画：复数平面 2D 向量旋转与内积衰减</h2>
+    <p>
+      调节 Token 位置序号 $m$ 与 $n$，观察 2D 向量在复平面上的旋转，并观察点积值是如何随着相对距离 $(m-n)$ 发生平滑衰减的！
+    </p>
+
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 RoPE 二维旋转位置编码动态交互仪</div>
+      
+      <div class="control-panel">
+        <div class="control-group">
+          <label>Query 位置 $m$:</label>
+          <input type="range" id="rope_m" min="0" max="8" step="1" value="2">
+          <span id="m_val" style="font-family: Consolas; font-weight: bold; width: 24px;">2</span>
+        </div>
+        <div class="control-group">
+          <label>Key 位置 $n$:</label>
+          <input type="range" id="rope_n" min="0" max="8" step="1" value="5">
+          <span id="n_val" style="font-family: Consolas; font-weight: bold; width: 24px;">5</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="ropeCanvas" width="460" height="340" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #fafafa;"></canvas>
+        <div style="flex: 1; min-width: 240px;">
+          <div class="logic-box" style="margin-top: 0;">
+            <strong>相对位置差值：</strong><br/>
+            $\Delta pos = m - n = $ <span id="diff_disp" style="font-weight: bold; color: #2563eb;">-3</span><br/><br/>
+            <strong>旋转后夹角与点积：</strong><br/>
+            $Q$ 旋转角: <span id="angle_q" style="font-family: Consolas;">40°</span><br/>
+            $K$ 旋转角: <span id="angle_k" style="font-family: Consolas;">100°</span><br/>
+            相对旋转点积: <span id="rope_dot_disp" style="font-size: 20px; font-weight: 800; color: #166534;">0.500</span>
+          </div>
+          <p style="font-size: 13.5px; color: #64748b;">
+            💡 <strong>工程物理直觉</strong>：高维向量中，每相邻两个维度 $(x_{2i}, x_{2i+1})$ 组成一个 2D 独立旋转平面，不同频段 $\theta_i = 10000^{-2i/d}$ 对应不同尺度的距离波长（类似时钟的时针、分针、秒针）。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const rCanvas = document.getElementById('ropeCanvas');
+      const rCtx = rCanvas.getContext('2d');
+      const originX = rCanvas.width / 2;
+      const originY = rCanvas.height / 2;
+      const baseTheta = 0.35;
+
+      function drawRoPE() {
+        const m = parseInt(document.getElementById('rope_m').value);
+        const n = parseInt(document.getElementById('rope_n').value);
+
+        document.getElementById('m_val').innerText = m;
+        document.getElementById('n_val').innerText = n;
+        document.getElementById('diff_disp').innerText = m - n;
+
+        rCtx.clearRect(0, 0, rCanvas.width, rCanvas.height);
+
+        rCtx.strokeStyle = '#e2e8f0';
+        rCtx.lineWidth = 1;
+        rCtx.beginPath();
+        rCtx.moveTo(0, originY); rCtx.lineTo(rCanvas.width, originY);
+        rCtx.moveTo(originX, 0); rCtx.lineTo(originX, rCanvas.height);
+        rCtx.stroke();
+
+        rCtx.strokeStyle = '#cbd5e1';
+        rCtx.beginPath();
+        rCtx.arc(originX, originY, 110, 0, Math.PI * 2);
+        rCtx.stroke();
+
+        const thetaQ = m * baseTheta;
+        const thetaK = n * baseTheta;
+
+        document.getElementById('angle_q').innerText = (thetaQ * 180 / Math.PI).toFixed(0) + '°';
+        document.getElementById('angle_k').innerText = (thetaK * 180 / Math.PI).toFixed(0) + '°';
+        document.getElementById('rope_dot_disp').innerText = Math.cos(thetaQ - thetaK).toFixed(3);
+
+        const radius = 110;
+        const qx = originX + radius * Math.cos(thetaQ);
+        const qy = originY - radius * Math.sin(thetaQ);
+        const kx = originX + radius * Math.cos(thetaK);
+        const ky = originY - radius * Math.sin(thetaK);
+
+        rCtx.strokeStyle = '#2563eb';
+        rCtx.fillStyle = '#2563eb';
+        rCtx.lineWidth = 3;
+        rCtx.beginPath();
+        rCtx.moveTo(originX, originY); rCtx.lineTo(qx, qy);
+        rCtx.stroke();
+        rCtx.beginPath(); rCtx.arc(qx, qy, 5, 0, Math.PI * 2); rCtx.fill();
+        rCtx.font = 'bold 12px Consolas';
+        rCtx.fillText(`Q (m=${m})`, qx + 8, qy + 4);
+
+        rCtx.strokeStyle = '#16a34a';
+        rCtx.fillStyle = '#16a34a';
+        rCtx.lineWidth = 3;
+        rCtx.beginPath();
+        rCtx.moveTo(originX, originY); rCtx.lineTo(kx, ky);
+        rCtx.stroke();
+        rCtx.beginPath(); rCtx.arc(kx, ky, 5, 0, Math.PI * 2); rCtx.fill();
+        rCtx.fillText(`K (n=${n})`, kx + 8, ky + 4);
+      }
+
+      document.getElementById('rope_m').addEventListener('input', drawRoPE);
+      document.getElementById('rope_n').addEventListener('input', drawRoPE);
+      drawRoPE();
+    </script>
+
+    <h2>5. Python / NumPy 极简 RoPE 实现</h2>
+    <pre><code class="language-python">import numpy as np
+
+def apply_rope(x: np.ndarray, pos: int, base=10000.0) -> np.ndarray:
+    dim = len(x)
+    i = np.arange(0, dim, 2)
+    theta = 1.0 / (base ** (i / dim))
+    
+    m_theta = pos * theta
+    cos_m = np.cos(m_theta)
+    sin_m = np.sin(m_theta)
+    
+    x_even = x[0::2]
+    x_odd = x[1::2]
+    
+    rot_even = x_even * cos_m - x_odd * sin_m
+    rot_odd = x_even * sin_m + x_odd * cos_m
+    
+    output = np.zeros_like(x)
+    output[0::2] = rot_even
+    output[1::2] = rot_odd
+    return output
+
+q = np.array([1.0, 0.0, 0.5, 0.5])
+q_rot_pos0 = apply_rope(q, pos=0)
+q_rot_pos5 = apply_rope(q, pos=5)
+
+print("位置 0 旋转后:", q_rot_pos0)
+print("位置 5 旋转后:", np.round(q_rot_pos5, 4))
+</code></pre>
+
+    <h2>6. 打开黑盒：真实工程细节 (RoPE 与长上下文外推)</h2>
+    <div class="card">
+      <strong>为什么 RoPE 能轻松扩展到 128k 上下文？</strong><br/>
+      通过调整基频 $base$（例如从 10000 提升到 500000，即 <strong>YaRN / NTK-aware RoPE</strong>），相当于降低了高频旋转速度，让模型在更稀疏的旋转角下识别更长远的位置距离，从而零成本实现上下文外推扩展！
+    </div>
+
+    <h2>7. 动手实验与思考题</h2>
+    <div class="warning-box">
+      <strong>思考题：</strong><br/>
+      RoPE 仅作用于 $Q$ 和 $K$ 张量，请问需要对 $V$（Value）张量执行 RoPE 旋转吗？为什么？<br/>
+      <em>提示：不需要！因为 $V$ 代表的是纯粹的内容信息，位置偏置已经完全由 $Q$ 和 $K$ 的点积注意力权重 $A$ 所决定。</em>
+    </div>
+
+
+    <div class="footer-nav">
+      <a href="11_multi_head_attention.html">← 上一节：2.3 多头注意力机制</a>
+      <a href="index.html">📑 目录主页</a>
+      <a href="13_causal_mask.html">下一节：3.2 Causal Mask 因果掩码 →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026
+    </footer>
+  </main>
+</body>
+</html>
