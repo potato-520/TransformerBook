@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>序言：从嵌入式与系统工程迈向 Transformer 与大模型底层原理</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与全局样式
+       ========================================== */
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 24px auto 56px;
+      background: #fff;
+      padding: 32px 38px;
+      box-shadow: 0 8px 28px rgba(15,23,42,.08);
+      border-radius: 14px;
+    }
+
+    h1, h2, h3, h4 {
+      color: #0f172a;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 30px;
+      line-height: 1.3;
+    }
+
+    .meta-bar {
+      color: #64748b;
+      font-size: 14px;
+      margin-top: -6px;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    h2 {
+      border-left: 4px solid #2563eb;
+      padding-left: 10px;
+      font-size: 23px;
+      margin-top: 1.8em;
+      margin-bottom: 14px;
+    }
+
+    h3 {
+      font-size: 18px;
+      margin-top: 1.4em;
+      margin-bottom: 8px;
+      color: #1e293b;
+    }
+
+    p, li {
+      line-height: 1.75;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #dbe3ef;
+      margin: 28px 0;
+    }
+
+    /* ==========================================
+       2. 表格样式
+       ========================================== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 11px 12px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    tr:hover td {
+      background: #f8fafc;
+    }
+
+    /* ==========================================
+       3. 代码块与行内代码
+       ========================================== */
+    code {
+      background: #eef2ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Menlo, monospace;
+      font-size: 13px;
+      color: #3730a3;
+    }
+
+    pre {
+      background: #0b1020;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      overflow: auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    blockquote {
+      border-left: 4px solid #93c5fd;
+      margin: 16px 0;
+      padding: 8px 16px;
+      color: #334155;
+      background: #f8fafc;
+      border-radius: 0 8px 8px 0;
+    }
+
+    /* ==========================================
+       4. 提示框与逻辑面板
+       ========================================== */
+    .card, .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .warning, .warning-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    .logic-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 18px 0;
+    }
+
+    /* ==========================================
+       5. 语义化文字高亮类
+       ========================================== */
+    .mark-concept {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .mark-caution {
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .mark-danger {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    /* ==========================================
+       6. 图表面板与 Mermaid
+       ========================================== */
+    pre.mermaid {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #c7cfdb;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+
+    .diagram-panel {
+      background: #ffffff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin: 14px 0 20px;
+      box-shadow: 0 4px 12px rgba(15,23,42,.04);
+    }
+
+    .phase-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #2563eb;
+      color: #ffffff;
+      margin-right: 8px;
+    }
+
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 18px 0;
+    }
+
+    .card-item {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .card-item strong {
+      color: #0f172a;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .btn-nav {
+      display: inline-block;
+      background: #2563eb;
+      color: #ffffff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      margin-top: 16px;
+      transition: background 0.2s;
+    }
+
+    .btn-nav:hover {
+      background: #1d4ed8;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 50px;
+      color: #94a3b8;
+      font-size: 13px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 20px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+  <main class="wrap">
+    <h1>📘 序言：从嵌入式与系统工程迈向 Transformer 与大模型底层原理</h1>
+    <div class="meta-bar">
+      <span>面向系统 / 嵌入式工程师的体系化全景教材</span> · <span>难度进阶：Phase 0 → Phase 4</span> · <span>版本：1.0</span>
+    </div>
+
+    <div class="card">
+      <strong>💡 序言寄语：</strong>
+      Transformer 不是黑魔法，也不是数学家专属的神秘象牙塔。在系统工程师的眼里，它本质上是一套<span class="mark-concept">高并发、低延迟的高维张量数字信号处理流水线</span>。只要掌握了数据的流动轨迹、内存布局与矩阵变换的物理意义，你就能像调试 MCU 寄存器与 Linux 驱动一样，精准掌控大模型的每一个计算细节。
+    </div>
+
+    <h2>一、为什么需要这本定制教材？</h2>
+    <p>
+      在当今的 AI 学习资料中，往往充斥着两种令人沮丧的极端：
+    </p>
+    <ul>
+      <li>
+        <strong>纯学术派的推导迷宫</strong>：一上来就铺天盖地推导高维概率分布、测度论与深奥的多元微积分。对于离开校园多年、<span class="mark-caution">数学纸上手算能力生疏</span>的资深工程师而言，极易让人在繁重的符号推导中迷失方向，挫伤学习动力。
+      </li>
+      <li>
+        <strong>纯调包派的应用浮光</strong>：仅仅教读者调用 <code>import transformers</code> 或调用商用 API。模型内部到底发生了什么？KV Cache 为什么能省显存？FlashAttention 为什么能提速 3 倍？这些核心工程机理全被隐藏在黑盒之中。
+      </li>
+    </ul>
+
+    <p>
+      <strong>本书的目标是打破这种断层。</strong> 我们针对拥有扎实 C/C++、Linux、MCU、系统架构与数据结构经验的工程师，重新量身定制一套认知体系：
+    </p>
+    <div class="logic-box">
+      <strong>核心工程主张：</strong>
+      把注意力机制看作<strong>带权重的动态查找表（Lookup Table）与数据库关联查询</strong>；
+      把前馈网络（FFN）看作<strong>特征变换与静态知识存储器</strong>；
+      把反向传播看作<strong>有向无环图（DAG）上的误差反馈控制系统</strong>。
+      通过极小规模向量（2~3 维）手算与 NumPy 极简代码，彻底打通底层认知。
+    </div>
+
+    <h2>二、LLM 端到端全景数据流心智模型</h2>
+    <p>
+      在正式开始分模块学习之前，我们需要在脑海中建立起模型在硅片与内存中的完整信号流水线：
+    </p>
+
+    <div class="diagram-panel">
+      <pre class="mermaid">
+flowchart TD
+    UserIn["自然语言输入字符串<br/>'Hello AI'"] --> Tok["1. Tokenizer 分词<br/>ID 数组: [15496, 9552]"]
+    Tok --> Emb["2. Embedding 查表<br/>Tensor: [Batch=1, SeqLen=2, Dim=4096]"]
+    
+    subgraph TB ["Transformer Decoder Block (堆叠 N 层)"]
+        direction TB
+        RMS1["Pre-RMSNorm 归一化"] --> MHA["Multi-Head Attention (MHA/GQA)<br/>Q/K/V 投影与 RoPE 旋转位置编码"]
+        MHA --> AttnScore["Scaled Dot-Product + Causal Mask<br/>Softmax(QK^T / √d_k) · V"]
+        AttnScore --> Res1["残差连接 1: X + Attn(X)"]
+        Res1 --> RMS2["Pre-RMSNorm 归一化"]
+        RMS2 --> FFN["Feed-Forward Network (FFN/MLP)<br/>两层线性投影 + SwiGLU 激活"]
+        FFN --> Res2["残差连接 2: X + FFN(X)"]
+    end
+
+    Emb --> TB
+    TB --> FinalNorm["3. Final RMSNorm 归一化"]
+    FinalNorm --> LMHead["4. LM Head 输出投影<br/>Hidden State [1, 2, 4096] → Logits [1, 2, VocabSize=32000]"]
+    LMHead --> Sampler["5. 采样器 (Temperature, Top-k, Top-p)<br/>选取概率最高的 Next Token ID"]
+    Sampler --> NextToken["生成下一个 Token 并送入 KV Cache"]
+    NextToken -.->|自回归循环| Tok
+      </pre>
+    </div>
+
+    <h2>三、五大阶段循序渐进路线图</h2>
+    <p>
+      全书分为 5 个循序渐进的阶段，共计 21 个核心独立模块：
+    </p>
+
+    <div class="diagram-panel">
+      <pre class="mermaid">
+flowchart LR
+    P0["Phase 0<br/>神经网络基石复习"] --> P1["Phase 1<br/>文本到向量表示"]
+    P1 --> P2["Phase 2<br/>自注意力核心机制"]
+    P2 --> P3["Phase 3<br/>Transformer Block"]
+    P3 --> P4["Phase 4<br/>训练生成与加速进阶"]
+      </pre>
+    </div>
+
+    <h3>Phase 0: 神经网络基石复习 (NN Foundations)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 14%;">小节</th>
+          <th style="width: 22%;">章节名称</th>
+          <th style="width: 38%;">核心概念与张量追踪</th>
+          <th style="width: 26%;">交互实验 / 动画</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>0.1</strong></td>
+          <td><a href="01_neuron_and_perceptron.html"><strong>神经元与感知机</strong></a></td>
+          <td>线性加权求和、阈值触发、二分类超平面</td>
+          <td>2D 决策边界滑块交互与直线旋转</td>
+        </tr>
+        <tr>
+          <td><strong>0.2</strong></td>
+          <td><a href="02_mlp_matrix_representation.html"><strong>MLP 与矩阵表达</strong></a></td>
+          <td><code>Y = X · W + B</code> 矩阵流水线、Shape 变换轨迹</td>
+          <td>2D/3D 网格矩阵仿射变换动画</td>
+        </tr>
+        <tr>
+          <td><strong>0.3</strong></td>
+          <td><a href="03_activation_functions.html"><strong>激活函数的本质</strong></a></td>
+          <td>非线性映射，Sigmoid, ReLU, GELU, Softmax 比较</td>
+          <td>输入连续波形，动态观察截断与平滑效果</td>
+        </tr>
+        <tr>
+          <td><strong>0.4</strong></td>
+          <td><a href="04_loss_and_cross_entropy.html"><strong>Loss 测量尺与交叉熵</strong></a></td>
+          <td>MSE 与 Cross-Entropy 几何物理含义、负对数似然</td>
+          <td>概率分布调节仪表盘与 Loss 惩罚曲线</td>
+        </tr>
+        <tr>
+          <td><strong>0.5</strong></td>
+          <td><a href="05_gradients_and_backpropagation.html"><strong>梯度下降与反向传播</strong></a></td>
+          <td>盲人下山直觉、计算图 (Computational Graph)、链式法则</td>
+          <td>2D/3D 损失曲面小球滚落与学习率模拟</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Phase 1: 文本到向量与序列表示 (Text to Vectors)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 14%;">小节</th>
+          <th style="width: 22%;">章节名称</th>
+          <th style="width: 38%;">核心概念与张量追踪</th>
+          <th style="width: 26%;">交互实验 / 动画</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1.1</strong></td>
+          <td><a href="06_tokenization_and_bpe.html"><strong>Tokenization 与 BPE 算法</strong></a></td>
+          <td>字符到 Token ID 映射、BPE 词表构建与分词规则</td>
+          <td>实时 Tokenizer 拆解器与 ID 高亮矩阵</td>
+        </tr>
+        <tr>
+          <td><strong>1.2</strong></td>
+          <td><a href="07_embedding_lookup.html"><strong>Embedding 嵌入层与语义空间</strong></a></td>
+          <td>Lookup Table 查表本质、高维密集向量与余弦相似度</td>
+          <td>2D 语义向量投影仪与空间向量加减法</td>
+        </tr>
+        <tr>
+          <td><strong>1.3</strong></td>
+          <td><a href="08_sequence_models_bottleneck.html"><strong>传统序列模型瓶颈</strong></a></td>
+          <td>RNN/LSTM 串行时序依赖、长程遗忘与并行吞吐瓶颈</td>
+          <td>串行流水线 vs 并行广播处理时序对比</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Phase 2: Transformer 核心——自注意力机制 (Self-Attention)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 14%;">小节</th>
+          <th style="width: 22%;">章节名称</th>
+          <th style="width: 38%;">核心概念与张量追踪</th>
+          <th style="width: 26%;">交互实验 / 动画</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>2.1</strong></td>
+          <td><a href="09_qkv_intuition.html"><strong>Q / K / V 检索物理直觉</strong></a></td>
+          <td>Query（查找目标）、Key（特征索引）、Value（实际内容）</td>
+          <td>悬停 Token 动态探针与相关度打分展示</td>
+        </tr>
+        <tr>
+          <td><strong>2.2</strong></td>
+          <td><a href="10_scaled_dot_product_attention.html"><strong>缩放点积注意力与极小手算</strong></a></td>
+          <td><code>softmax(QK^T / √d_k) · V</code> 计算全流程与极小规模手算</td>
+          <td>动态点积热力图与权重加权矩阵生成器</td>
+        </tr>
+        <tr>
+          <td><strong>2.3</strong></td>
+          <td><a href="11_multi_head_attention.html"><strong>多头注意力机制 (MHA)</strong></a></td>
+          <td>为什么需要分头？特征子空间投影与维度切分合并</td>
+          <td>多头注意力特征分流与重组可视化</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Phase 3: Transformer Block 与完整组件 (Block & Components)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 14%;">小节</th>
+          <th style="width: 22%;">章节名称</th>
+          <th style="width: 38%;">核心概念与张量追踪</th>
+          <th style="width: 26%;">交互实验 / 动画</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>3.1</strong></td>
+          <td><a href="12_positional_encoding_and_rope.html"><strong>位置编码 (Absolute PE 到 RoPE)</strong></a></td>
+          <td>注入位置信息、正余弦绝对编码 vs 现代 RoPE 旋转位置编码</td>
+          <td>复平面 2D 向量旋转动画与内积衰减展示</td>
+        </tr>
+        <tr>
+          <td><strong>3.2</strong></td>
+          <td><a href="13_causal_mask.html"><strong>Causal Mask 因果掩码</strong></a></td>
+          <td>自回归生成限制未来信息、上三角 <code>-inf</code> 遮蔽</td>
+          <td>交互式 Mask 矩阵开关与注意力遮罩模拟</td>
+        </tr>
+        <tr>
+          <td><strong>3.3</strong></td>
+          <td><a href="14_layer_norm_and_rmsnorm.html"><strong>LayerNorm 与 RMSNorm</strong></a></td>
+          <td>深层特征数值稳定性、LayerNorm vs BatchNorm、RMSNorm</td>
+          <td>3D 张量切片归一化立方体与分布缩放</td>
+        </tr>
+        <tr>
+          <td><strong>3.4</strong></td>
+          <td><a href="15_residual_and_ffn.html"><strong>残差连接与 FFN 记忆网络</strong></a></td>
+          <td><code>X + SubLayer(X)</code> 梯度直通、两层 MLP 知识映射</td>
+          <td>深层网络信号衰减对比模拟器（有/无残差）</td>
+        </tr>
+        <tr>
+          <td><strong>3.5</strong></td>
+          <td><a href="16_transformer_block_assembly.html"><strong>Decoder Block 完整组装</strong></a></td>
+          <td>Pre-LN 架构组装、输入到输出的张量流水线追踪</td>
+          <td>单层完整 Block 张量流水线单步执行器</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Phase 4: 训练生成与现代 LLM 进阶 (Inference & Scaling)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 14%;">小节</th>
+          <th style="width: 22%;">章节名称</th>
+          <th style="width: 38%;">核心概念与张量追踪</th>
+          <th style="width: 26%;">交互实验 / 动画</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>4.1</strong></td>
+          <td><a href="17_logits_and_sampling.html"><strong>Logits 映射与采样策略</strong></a></td>
+          <td>Hidden State → Vocab Logits、Temperature、Top-k、Top-p</td>
+          <td>动态概率柱状图与采样多样性调节仪</td>
+        </tr>
+        <tr>
+          <td><strong>4.2</strong></td>
+          <td><a href="18_numpy_mini_gpt.html"><strong>纯 NumPy 手写极简 GPT</strong></a></td>
+          <td>纯 NumPy 实现 200 行极简 GPT 前向推理引擎</td>
+          <td>浏览器端单步断点执行 GPT 推理流程</td>
+        </tr>
+        <tr>
+          <td><strong>4.3</strong></td>
+          <td><a href="19_kv_cache_mechanism.html"><strong>KV Cache 机制与显存加速</strong></a></td>
+          <td>自回归冗余计算消除、KV 缓存重用、显存容量公式</td>
+          <td>Prefill vs Decode 阶段 KV Cache 读写动画</td>
+        </tr>
+        <tr>
+          <td><strong>4.4</strong></td>
+          <td><a href="20_gqa_and_flash_attention.html"><strong>GQA 与 FlashAttention 思想</strong></a></td>
+          <td>MHA / MQA / GQA 架构演进、HBM/SRAM 带宽瓶颈与 Tiling 分块</td>
+          <td>GPU 存储层级搬运开销对比模拟器</td>
+        </tr>
+        <tr>
+          <td><strong>4.5</strong></td>
+          <td><a href="21_quantization_and_deployment.html"><strong>模型量化与边缘部署</strong></a></td>
+          <td>FP16 → INT8 / INT4、Weight-Only vs 激活量化、MCU/NPU 部署</td>
+          <td>定点量化舍入误差与反量化交互对比仪</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>四、每个模块的“升级版 9 步教学闭环”</h2>
+    <p>每个模块的 HTML 页面均遵循以下严格固定的教学逻辑：</p>
+    <pre>
+1. 它解决什么问题？ (工程师视角黑盒引入)
+    ↓
+2. 输入是什么？ (Tensor Shape, Data Type, 实际物理含义)
+    ↓
+3. 输出是什么？ (Tensor Shape 变换轨迹)
+    ↓
+4. 黑盒 JS 可交互动画体验 (控件/滑块/Canvas/按步执行)
+    ↓
+5. 极小规模人工计算 (2~3 维向量，消除纸上卡顿)
+    ↓
+6. Python / NumPy 代码实现 (简洁代码与手算一一对应)
+    ↓
+7. 数学原理与物理直觉 (按需触发，解释“为什么这样设计”)
+    ↓
+8. 打开黑盒：真实 Transformer 中的工程细节 (PyTorch/CUDA/NPU 视角)
+    ↓
+9. 动手实验与思考题 (参数调优与边界情况分析)</pre>
+
+    <h2>五、全书能力进阶矩阵</h2>
+    <div class="grid-2col">
+      <div class="card-item">
+        <strong>Level 1: 架构全景洞察</strong>
+        一眼看透 Transformer 架构图与任意维度的张量流动轨迹。
+      </div>
+      <div class="card-item">
+        <strong>Level 2: 源码级掌控力</strong>
+        能独立阅读 PyTorch / llama.cpp / HuggingFace 等底层源码。
+      </div>
+      <div class="card-item">
+        <strong>Level 3: 从零手写能力</strong>
+        脱离任何高阶框架，纯用 NumPy/C++ 手写 GPT 推理核心。
+      </div>
+      <div class="card-item">
+        <strong>Level 4: 算子物理直觉</strong>
+        对 Attention、RoPE、RMSNorm、Mask 等原理了然于胸。
+      </div>
+      <div class="card-item">
+        <strong>Level 5: 计算图与反向传播</strong>
+        清晰掌握 Forward / Loss / Backprop 计算图推导链。
+      </div>
+      <div class="card-item">
+        <strong>Level 6: 顶会论文阅读能力</strong>
+        具备阅读 NeurIPS/ICLR 顶会论文的能力，不再畏惧矩阵与概率公式。
+      </div>
+      <div class="card-item" style="grid-column: span 2;">
+        <strong>Level 7: 硬件与显存优化直觉</strong>
+        深刻掌握 KV Cache, GQA, FlashAttention, INT8/INT4 量化背后的硬件访存与显存瓶颈。
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 36px;">
+      <a class="btn-nav" href="01_neuron_and_perceptron.html">开始第一章：0.1 神经元与感知机 →</a>
+    </div>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026 · 序言与全景导读
+    </footer>
+  </main>
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
+</body>
+</html>

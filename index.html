@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Transformer & LLM 底层原理与神经网络交互式教材 - 导航目录</title>
+  <style>
+    /* ==========================================
+       1. 基础版式与视觉基调
+       ========================================== */
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      background: #f6f8fb;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 32px auto 60px;
+      background: #ffffff;
+      padding: 36px 44px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      border-radius: 16px;
+      border: 1px solid #eef2f6;
+    }
+
+    /* ==========================================
+       2. Hero 头部与快捷导航
+       ========================================== */
+    .hero {
+      padding-bottom: 24px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      color: #64748b;
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
+
+    .hero-banner {
+      background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .hero-text {
+      flex: 1;
+      min-width: 280px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #334155;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    }
+    .btn-primary:hover {
+      background: #1d4ed8;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+    }
+    .btn-secondary:hover {
+      background: #f8fafc;
+      border-color: #93c5fd;
+    }
+
+    .stats-bar {
+      display: flex;
+      gap: 20px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      font-size: 12px;
+      color: #475569;
+      background: #f1f5f9;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    /* ==========================================
+       3. 阶段与章节卡片
+       ========================================== */
+    .phase-section {
+      margin-top: 32px;
+    }
+
+    .phase-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .phase-tag {
+      background: #2563eb;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .phase-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    .phase-summary {
+      font-size: 13px;
+      color: #64748b;
+      margin-left: auto;
+    }
+
+    .chapter-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .chapter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.2s ease;
+    }
+
+    .chapter-row:hover {
+      background: #f8fafc;
+      border-color: #93c5fd;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);
+      transform: translateX(3px);
+    }
+
+    .chapter-main {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .chapter-num {
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #2563eb;
+      background: #eff6ff;
+      padding: 3px 8px;
+      border-radius: 6px;
+      width: 28px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .chapter-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .chapter-focus {
+      font-size: 13px;
+      color: #64748b;
+      margin-left: 8px;
+    }
+
+    .chapter-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      margin-left: 16px;
+    }
+
+    .interactive-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: #059669;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+
+    .arrow-icon {
+      color: #94a3b8;
+      font-size: 14px;
+      transition: transform 0.2s ease;
+    }
+
+    .chapter-row:hover .arrow-icon {
+      color: #2563eb;
+      transform: translateX(2px);
+    }
+
+    /* ==========================================
+       4. 底部声明
+       ========================================== */
+    footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    
+    <!-- 头部区域 -->
+    <header class="hero">
+      <h1>📘 Transformer & LLM 底层原理与神经网络交互式教材</h1>
+      <div class="subtitle">面向资深系统 / 嵌入式工程师量身定制的硬核底层交互教材</div>
+
+      <div class="hero-banner">
+        <div class="hero-text">
+          <strong>高维张量信号处理流水线 · 极小手算唤醒直觉 · 拒绝玄学调包</strong><br/>
+          从加权求和到现代 Decoder-Only 架构，带你全流程掌握 Attention、RoPE、RMSNorm 与 KV Cache 机制。
+        </div>
+        <div class="hero-actions">
+          <a class="btn btn-secondary" href="00_preface.html">📖 阅读全文序言</a>
+          <a class="btn btn-primary" href="01_neuron_and_perceptron.html">🚀 开始第 1 篇</a>
+        </div>
+      </div>
+
+      <div class="stats-bar">
+        <span class="stat-pill">📌 5 大循序渐进阶段</span>
+        <span class="stat-pill">✨ 21 个独立可交互模块</span>
+        <span class="stat-pill">🔬 升级版 9 步工程教学法</span>
+        <span class="stat-pill">💻 纯 NumPy 极简手写引擎</span>
+      </div>
+    </header>
+
+    <!-- Phase 0 -->
+    <section class="phase-section">
+      <div class="phase-header">
+        <span class="phase-tag">Phase 0</span>
+        <h2 class="phase-title">神经网络基石复习 (Neural Network Foundations)</h2>
+        <span class="phase-summary">共 5 节 · 线性代数与梯度直觉重构</span>
+      </div>
+      <div class="chapter-list">
+        <a class="chapter-row" href="01_neuron_and_perceptron.html">
+          <div class="chapter-main">
+            <span class="chapter-num">0.1</span>
+            <span class="chapter-name">神经元与感知机</span>
+            <span class="chapter-focus">· 线性加权求和、二分类决策超平面</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 2D超平面滑块控制</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="02_mlp_matrix_representation.html">
+          <div class="chapter-main">
+            <span class="chapter-num">0.2</span>
+            <span class="chapter-name">MLP 与矩阵表达</span>
+            <span class="chapter-focus">· <code>Y = X · W + B</code> 矩阵流水线与张量变换</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 网格仿射变换动画</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="03_activation_functions.html">
+          <div class="chapter-main">
+            <span class="chapter-num">0.3</span>
+            <span class="chapter-name">激活函数的本质</span>
+            <span class="chapter-focus">· 非线性映射、Sigmoid / ReLU / GELU 对比</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 波形截断平滑实验</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="04_loss_and_cross_entropy.html">
+          <div class="chapter-main">
+            <span class="chapter-num">0.4</span>
+            <span class="chapter-name">Loss 测量尺与交叉熵</span>
+            <span class="chapter-focus">· MSE vs Cross-Entropy 几何物理含义</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 概率分布与Loss爆发</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="05_gradients_and_backpropagation.html">
+          <div class="chapter-main">
+            <span class="chapter-num">0.5</span>
+            <span class="chapter-name">梯度下降与反向传播</span>
+            <span class="chapter-focus">· 盲人下山直觉、计算图与链式法则</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 3D损失曲面滚球</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Phase 1 -->
+    <section class="phase-section">
+      <div class="phase-header">
+        <span class="phase-tag">Phase 1</span>
+        <h2 class="phase-title">文本到向量与序列表示 (Text to Vectors)</h2>
+        <span class="phase-summary">共 3 节 · 离散语言到连续向量</span>
+      </div>
+      <div class="chapter-list">
+        <a class="chapter-row" href="06_tokenization_and_bpe.html">
+          <div class="chapter-main">
+            <span class="chapter-num">1.1</span>
+            <span class="chapter-name">Tokenization 与 BPE 算法</span>
+            <span class="chapter-focus">· 字符到 Token ID 映射与分词边界</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 实时 Tokenizer 拆解器</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="07_embedding_lookup.html">
+          <div class="chapter-main">
+            <span class="chapter-num">1.2</span>
+            <span class="chapter-name">Embedding 嵌入层与语义空间</span>
+            <span class="chapter-focus">· Lookup Table 查表本质与向量空间加减</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 2D 语义向量投影仪</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="08_sequence_models_bottleneck.html">
+          <div class="chapter-main">
+            <span class="chapter-num">1.3</span>
+            <span class="chapter-name">传统序列模型瓶颈</span>
+            <span class="chapter-focus">· RNN/LSTM 串行依赖 vs 并行计算痛点</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 串行时钟 vs 并行流水线</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Phase 2 -->
+    <section class="phase-section">
+      <div class="phase-header">
+        <span class="phase-tag">Phase 2</span>
+        <h2 class="phase-title">Transformer 核心——自注意力机制 (Self-Attention)</h2>
+        <span class="phase-summary">共 3 节 · 矩阵注意力全链路</span>
+      </div>
+      <div class="chapter-list">
+        <a class="chapter-row" href="09_qkv_intuition.html">
+          <div class="chapter-main">
+            <span class="chapter-num">2.1</span>
+            <span class="chapter-name">Q / K / V 检索物理直觉</span>
+            <span class="chapter-focus">· Query / Key / Value 检索比喻与相关度</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 动态悬停相关度打分</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="10_scaled_dot_product_attention.html">
+          <div class="chapter-main">
+            <span class="chapter-num">2.2</span>
+            <span class="chapter-name">缩放点积注意力与极小手算</span>
+            <span class="chapter-focus">· <code>softmax(QK^T / √d_k) · V</code> 算子精解</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 点积注意力热力图</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="11_multi_head_attention.html">
+          <div class="chapter-main">
+            <span class="chapter-num">2.3</span>
+            <span class="chapter-name">多头注意力机制 (Multi-Head)</span>
+            <span class="chapter-focus">· 子空间投影、语法头/指代头分流与合并</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 多头分流拼接可视化</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Phase 3 -->
+    <section class="phase-section">
+      <div class="phase-header">
+        <span class="phase-tag">Phase 3</span>
+        <h2 class="phase-title">Transformer Block 与完整组件 (Block & Components)</h2>
+        <span class="phase-summary">共 5 节 · 工业级大模型骨架组装</span>
+      </div>
+      <div class="chapter-list">
+        <a class="chapter-row" href="12_positional_encoding_and_rope.html">
+          <div class="chapter-main">
+            <span class="chapter-num">3.1</span>
+            <span class="chapter-name">位置编码与 RoPE</span>
+            <span class="chapter-focus">· 绝对正余弦编码 vs 现代旋转位置编码</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 复平面向量旋转动画</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="13_causal_mask.html">
+          <div class="chapter-main">
+            <span class="chapter-num">3.2</span>
+            <span class="chapter-name">Causal Mask 因果掩码</span>
+            <span class="chapter-focus">· Decoder-Only 自回归下禁止偷看未来</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 交互式 Mask 遮罩矩阵</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="14_layer_norm_and_rmsnorm.html">
+          <div class="chapter-main">
+            <span class="chapter-num">3.3</span>
+            <span class="chapter-name">LayerNorm 与 RMSNorm</span>
+            <span class="chapter-focus">· 深层特征分布稳定、LN vs BN 维度差异</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 3D 张量切片归一化</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="15_residual_and_ffn.html">
+          <div class="chapter-main">
+            <span class="chapter-num">3.4</span>
+            <span class="chapter-name">残差连接与 FFN 记忆网络</span>
+            <span class="chapter-focus">· 梯度高速公路与前馈网络知识存储</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 深度衰减对比模拟器</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="16_transformer_block_assembly.html">
+          <div class="chapter-main">
+            <span class="chapter-num">3.5</span>
+            <span class="chapter-name">Decoder Block 完整组装</span>
+            <span class="chapter-focus">· Pre-LN 结构、全流程 Tensor Shape 追踪</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 单层流水线单步执行器</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Phase 4 -->
+    <section class="phase-section">
+      <div class="phase-header">
+        <span class="phase-tag">Phase 4</span>
+        <h2 class="phase-title">训练生成与现代 LLM 进阶 (Inference & Scaling)</h2>
+        <span class="phase-summary">共 5 节 · 推理加速与边缘量化</span>
+      </div>
+      <div class="chapter-list">
+        <a class="chapter-row" href="17_logits_and_sampling.html">
+          <div class="chapter-main">
+            <span class="chapter-num">4.1</span>
+            <span class="chapter-name">Logits 映射与采样策略</span>
+            <span class="chapter-focus">· Temperature、Top-k / Top-p (Nucleus) 采样</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 概率分布调节柱状图</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="18_numpy_mini_gpt.html">
+          <div class="chapter-main">
+            <span class="chapter-num">4.2</span>
+            <span class="chapter-name">纯 NumPy 手写迷你 GPT</span>
+            <span class="chapter-focus">· 200 行无依赖实现完整 GPT 前向推理</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 浏览器单步断点执行</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="19_kv_cache_mechanism.html">
+          <div class="chapter-main">
+            <span class="chapter-num">4.3</span>
+            <span class="chapter-name">KV Cache 机制与显存加速</span>
+            <span class="chapter-focus">· 自回归冗余消除、KV 重用与显存公式</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 Prefill/Decode 缓存动画</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="20_gqa_and_flash_attention.html">
+          <div class="chapter-main">
+            <span class="chapter-num">4.4</span>
+            <span class="chapter-name">GQA 与 FlashAttention 思想</span>
+            <span class="chapter-focus">· MQA/GQA 架构演进、HBM/SRAM 访存瓶颈</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 GPU 存储层级搬运模拟</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+        <a class="chapter-row" href="21_quantization_and_deployment.html">
+          <div class="chapter-main">
+            <span class="chapter-num">4.5</span>
+            <span class="chapter-name">模型量化与边缘部署</span>
+            <span class="chapter-focus">· INT8 / INT4 量化、Weight-Only、MCU/NPU 部署</span>
+          </div>
+          <div class="chapter-meta">
+            <span class="interactive-badge">🎮 定点量化误差对比仪</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <footer>
+      Transformer & LLM 底层原理与神经网络交互式教材 &copy; 2026 · 现代化卡片导航系统
+    </footer>
+  </main>
+</body>
+</html>
