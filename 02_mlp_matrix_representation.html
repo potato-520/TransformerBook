@@ -554,10 +554,10 @@
       <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px;">
         <strong style="color: #0f172a; font-size: 14px;">2. 为什么 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$ 会把平面拍扁成一条线？</strong>
         <p style="font-size: 12.8px; color: #475569; margin: 6px 0 0 0; line-height: 1.6;">
-          观察这组参数：<br/>
-          - 它把 $\hat{i}=(1,0)$ 送到了 $(1, 1)$；<br/>
-          - 它把 $\hat{j}=(0,1)$ <strong>也送到了同一个方向 $(1, 1)$</strong>！<br/>
-          两个原本垂直独立的基向量，被强行合并在同一方向上。对于任何输入 $(x_1, x_2)$：
+          观察这组参数（<strong>两个基向量全部降落在 (1,1)</strong>）：<br/>
+          - 🔴 红色基向量 $\hat{i}=(1,0) \times W_1 = [1, 1]$；<br/>
+          - 🟢 绿色基向量 $\hat{j}=(0,1) \times W_1 = [1, 1]$！<br/>
+          两个基向量被强行合并重叠。对于任意输入点 $(x_1, x_2)$：
           $$[x_1, x_2] \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix} = [x_1 + x_2, x_1 + x_2] = (x_1 + x_2) \cdot [1, 1]$$
           <strong>结果：整个 2D 平面被彻底“拍扁（降维投影）”成了一条斜率为 1 的 45 度直线！</strong>
         </p>
@@ -587,8 +587,8 @@
             <pre style="padding: 10px; font-size: 12px; margin: 8px 0;"><code id="basis_mat_disp">W = [[0.71, -0.71],
      [0.71,  0.71]]</code></pre>
             <strong>基向量落脚点状态：</strong><br/>
-            🔴 $\hat{i}$ 终点: <code id="i_pos">(0.71, 0.71)</code><br/>
-            🟢 $\hat{j}$ 终点: <code id="j_pos">(-0.71, 0.71)</code><br/><br/>
+            🔴 $\hat{i} (1,0)$ 终点: <code id="i_pos">(0.71, 0.71)</code><br/>
+            🟢 $\hat{j} (0,1)$ 终点: <code id="j_pos">(-0.71, 0.71)</code><br/><br/>
             <strong>空间形态：</strong> <span id="basis_status" style="font-weight: bold; color: #2563eb;">2D 刚体逆时针旋转 45° (面积保真)</span>
           </div>
         </div>
@@ -622,7 +622,6 @@
         ctxB.strokeStyle = '#e2e8f0';
         ctxB.lineWidth = 1;
         for (let i = -2; i <= 2; i++) {
-          // 水平变换线
           ctxB.beginPath();
           const x1 = -2 * bW11 + i * bW21, y1 = -2 * bW12 + i * bW22;
           const x2 = 2 * bW11 + i * bW21, y2 = 2 * bW12 + i * bW22;
@@ -630,7 +629,6 @@
           ctxB.lineTo(bOx + x2 * bScale, bOy - y2 * bScale);
           ctxB.stroke();
 
-          // 垂直变换线
           ctxB.beginPath();
           const gx1 = i * bW11 - 2 * bW21, gy1 = i * bW12 - 2 * bW22;
           const gx2 = i * bW11 + 2 * bW21, gy2 = i * bW12 + 2 * bW22;
@@ -644,22 +642,41 @@
         ctxB.beginPath(); ctxB.moveTo(0, bOy); ctxB.lineTo(cBasis.width, bOy); ctxB.stroke();
         ctxB.beginPath(); ctxB.moveTo(bOx, 0); ctxB.lineTo(bOx, cBasis.height); ctxB.stroke();
 
-        // 绘制基向量 i 箭头 (红色)
-        ctxB.strokeStyle = '#dc2626'; ctxB.fillStyle = '#dc2626'; ctxB.lineWidth = 3;
-        ctxB.beginPath(); ctxB.moveTo(bOx, bOy);
-        const ix = bOx + bW11 * bScale, iy = bOy - bW12 * bScale;
-        ctxB.lineTo(ix, iy); ctxB.stroke();
-        ctxB.beginPath(); ctxB.arc(ix, iy, 4, 0, Math.PI * 2); ctxB.fill();
-        ctxB.font = 'bold 12px Segoe UI';
-        ctxB.fillText('î (1,0)', ix + 6, iy - 4);
+        const isOverlap = (Math.abs(bW11 - bW21) < 1e-3 && Math.abs(bW12 - bW22) < 1e-3);
 
-        // 绘制基向量 j 箭头 (绿色)
-        ctxB.strokeStyle = '#16a34a'; ctxB.fillStyle = '#16a34a'; ctxB.lineWidth = 3;
-        ctxB.beginPath(); ctxB.moveTo(bOx, bOy);
-        const jx = bOx + bW21 * bScale, jy = bOy - bW22 * bScale;
-        ctxB.lineTo(jx, jy); ctxB.stroke();
-        ctxB.beginPath(); ctxB.arc(jx, jy, 4, 0, Math.PI * 2); ctxB.fill();
-        ctxB.fillText('ĵ (0,1)', jx + 6, jy - 4);
+        if (isOverlap) {
+          // 重合时画双色箭头
+          const ix = bOx + bW11 * bScale, iy = bOy - bW12 * bScale;
+          ctxB.strokeStyle = '#9333ea'; ctxB.lineWidth = 4;
+          ctxB.beginPath(); ctxB.moveTo(bOx, bOy); ctxB.lineTo(ix, iy); ctxB.stroke();
+
+          // 红色小圆点 + 绿色外环
+          ctxB.fillStyle = '#dc2626';
+          ctxB.beginPath(); ctxB.arc(ix, iy, 5, 0, Math.PI * 2); ctxB.fill();
+          ctxB.strokeStyle = '#16a34a'; ctxB.lineWidth = 2.5;
+          ctxB.beginPath(); ctxB.arc(ix, iy, 8, 0, Math.PI * 2); ctxB.stroke();
+
+          ctxB.fillStyle = '#9333ea';
+          ctxB.font = 'bold 12px Segoe UI';
+          ctxB.fillText('î 与 ĵ 均重合降落在 (1,1) !', ix + 12, iy - 6);
+        } else {
+          // 绘制基向量 i 箭头 (红色)
+          ctxB.strokeStyle = '#dc2626'; ctxB.fillStyle = '#dc2626'; ctxB.lineWidth = 3;
+          ctxB.beginPath(); ctxB.moveTo(bOx, bOy);
+          const ix = bOx + bW11 * bScale, iy = bOy - bW12 * bScale;
+          ctxB.lineTo(ix, iy); ctxB.stroke();
+          ctxB.beginPath(); ctxB.arc(ix, iy, 4, 0, Math.PI * 2); ctxB.fill();
+          ctxB.font = 'bold 12px Segoe UI';
+          ctxB.fillText('î (1,0)', ix + 6, iy - 4);
+
+          // 绘制基向量 j 箭头 (绿色)
+          ctxB.strokeStyle = '#16a34a'; ctxB.fillStyle = '#16a34a'; ctxB.lineWidth = 3;
+          ctxB.beginPath(); ctxB.moveTo(bOx, bOy);
+          const jx = bOx + bW21 * bScale, jy = bOy - bW22 * bScale;
+          ctxB.lineTo(jx, jy); ctxB.stroke();
+          ctxB.beginPath(); ctxB.arc(jx, jy, 4, 0, Math.PI * 2); ctxB.fill();
+          ctxB.fillText('ĵ (0,1)', jx + 6, jy - 4);
+        }
 
         // 更新数值文本
         document.getElementById('basis_mat_disp').innerText = `W = [[${bW11.toFixed(2)}, ${bW12.toFixed(2)}],\n     [${bW21.toFixed(2)}, ${bW22.toFixed(2)}]]`;
