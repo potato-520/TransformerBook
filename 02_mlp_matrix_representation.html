@@ -496,7 +496,7 @@
     <h1>0.2 多层感知机与矩阵表达 (MLP & Matrix Representation)</h1>
     <div class="card">
       <strong>本节核心认知目标：</strong><br/>
-      通过 <strong>5 个独立的可调节交互动画</strong>，微观拆解“空间扭曲（Space Warping）”的每一步物理细节：从原始输入 $\to$ 矩阵仿射旋转 $\to$ ReLU 二极管截断 $\to$ 隐层特征重构 $\to$ 输出层单刀切割，亲手调节参数见证 XOR 世纪难题的破解！
+      通过 <strong>5 个独立的可调节交互动画</strong>，微观拆解“空间扭曲（Space Warping）”的每一步物理细节：从原始输入 $\to$ 矩阵旋转剪切 $\to$ 偏置平移 $\to$ ReLU 二极管截断 $\to$ 隐层特征重构 $\to$ 输出层单刀切割，亲手调节参数见证 XOR 世纪难题的破解！
     </div>
 
     <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
@@ -568,35 +568,42 @@
       </div>
     </div>
 
-    <!-- ==================== Step 2 ==================== -->
-    <h3>第二步 · 矩阵线性仿射变换 $Z = X W_1 + B_1$：倾斜旋转，依然共线</h3>
-    <p>
-      隐藏层拥有 2 个神经元，设置权重矩阵 $W_1$ 与偏置 $B_1$，计算内部加权电压 $z_1 = x_1 + x_2 + b_{11}, z_2 = x_1 + x_2 + b_{12}$。<br/>
-      <strong>调节下方偏置滑块，观察 4 个点在 $(z_1, z_2)$ 空间中的移动——注意看连接它们的紫色直线！</strong>
-    </p>
+    <!-- ==================== Step 2 (Detailed Split) ==================== -->
+    <h3>第二步 · 矩阵线性仿射变换 $Z = X W_1 + B_1$：【细拆两阶段】旋转投影与偏置平移</h3>
+    <div class="card" style="background: #f8fafc; border: 1px solid #cbd5e1;">
+      <strong>很多人困惑：为什么原始的正方形点会变成斜线上的点？让我们把矩阵乘法和偏置彻底拆开：</strong>
+      <ol style="margin-bottom: 0;">
+        <li>
+          <strong>阶段 2.1 · 纯矩阵乘法 $X \cdot W_1$（旋转、剪切与对角线投影）：</strong><br/>
+          设置权重矩阵 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$。原始基向量 $(1,0) \to (1,1)$，$(0,1) \to (1,1)$。<br/>
+          这相当于把原本正交的正方形坐标轴<strong>顺时针旋转 45 度并压缩投影到了 $z_2 = z_1$ 这条对角线上</strong>！<br/>
+          计算结果：$(0,0) \to (0,0)$，$(1,0)$ 与 $(0,1)$ 均变成 $(1,1)$，$(1,1) \to (2,2)$。
+        </li>
+        <li style="margin-top: 8px;">
+          <strong>阶段 2.2 · 加上偏置向量 $+ B_1$（整体平移至负半区）：</strong><br/>
+          偏置向量 $B_1 = [-0.5, -1.5]$ 就像在平面上用力推了一把，把整条对角线向左平移 0.5、向下平移 1.5！<br/>
+          最终坐标：$(0,0) \to (-0.5, -1.5)$，两个红点 $\to (0.5, -0.5)$，$(1,1) \to (1.5, 0.5)$。<br/>
+          <strong>⚠️ 关键物理结论：虽然完成了旋转与平移，但 4 个点依然死死排在一条直线上（共线），没有非线性激活函数依然无法分类！</strong>
+        </li>
+      </ol>
+    </div>
 
     <div class="interactive-card">
-      <div class="interactive-title">🎮 交互实验 2：纯线性矩阵变换后的“共线死锁”</div>
+      <div class="interactive-title">🎮 交互实验 2：两阶段拆解——观察矩阵旋转压缩与偏置平移</div>
       
       <div class="control-panel">
-        <div class="control-group">
-          <label>神经元 1 偏置 b11:</label>
-          <input type="range" id="s2_b1" min="-2.5" max="1.5" step="0.1" value="-0.5">
-          <span id="s2_b1_val" style="font-family: Consolas; font-weight: bold; width: 36px;">-0.5</span>
-        </div>
-        <div class="control-group">
-          <label>神经元 2 偏置 b12:</label>
-          <input type="range" id="s2_b2" min="-2.5" max="1.5" step="0.1" value="-1.5">
-          <span id="s2_b2_val" style="font-family: Consolas; font-weight: bold; width: 36px;">-1.5</span>
-        </div>
+        <button class="btn" onclick="setS2Sub(1)" id="s2_btn1">阶段 2.1: 纯矩阵旋转压缩 (X * W1)</button>
+        <button class="btn" onclick="setS2Sub(2)" id="s2_btn2" style="background:#64748b;">阶段 2.2: 加上偏置平移 (+ B1)</button>
       </div>
 
       <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
-        <canvas id="c_step2" width="440" height="240" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
+        <canvas id="c_step2" width="440" height="250" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
         <div style="flex: 1; min-width: 220px;">
           <div class="logic-box" style="margin-top: 0; background: #faf5ff; border-color: #e9d5ff; color: #581c87;">
-            <strong>几何共线性结论：</strong><br/>
-            <span style="font-size: 13.5px;">点仍然牢牢排在同一根直线上！<br/>没有非线性折叠，纯矩阵乘法只是在平移旋转坐标系，<strong>依然无法解开 XOR</strong>！</span>
+            <strong id="s2_title">阶段 2.1: 纯矩阵旋转投影 (X * W1)</strong><br/><br/>
+            <span id="s2_desc" style="font-size: 13px; line-height: 1.6;">
+              权重矩阵将正方形网格旋转 45 度并压缩投影在对角线上。(1,0) 与 (0,1) 投影至同一位置 (1,1)。
+            </span>
           </div>
         </div>
       </div>
@@ -709,7 +716,6 @@
 
     <!-- 5 个 Canvas 的控制脚本 -->
     <script>
-      // 辅助绘图函数
       function drawBaseAxes(ctx, w, h, ox, oy, xLabel, yLabel) {
         ctx.clearRect(0, 0, w, h);
         ctx.strokeStyle = '#94a3b8';
@@ -779,7 +785,6 @@
         accEl.innerText = `${(correct / 4 * 100).toFixed(0)}% (${correct}/4)`;
         accEl.style.color = (correct === 4) ? '#16a34a' : '#dc2626';
 
-        // 绘制决策线
         if (Math.abs(w2) > 1e-4) {
           const yAt0 = -b / w2;
           const yAt1_5 = (-b - w1 * 1.5) / w2;
@@ -795,45 +800,75 @@
       document.getElementById('s1_b').addEventListener('input', updateStep1);
       updateStep1();
 
-      // ================= Step 2 渲染 =================
+      // ================= Step 2 渲染 (支持 2.1 与 2.2 切换) =================
       const c2 = document.getElementById('c_step2'), ctx2 = c2.getContext('2d');
-      function updateStep2() {
-        const b1 = parseFloat(document.getElementById('s2_b1').value);
-        const b2 = parseFloat(document.getElementById('s2_b2').value);
-        document.getElementById('s2_b1_val').innerText = b1.toFixed(1);
-        document.getElementById('s2_b2_val').innerText = b2.toFixed(1);
+      let s2Sub = 1;
+      function setS2Sub(sub) {
+        s2Sub = sub;
+        document.getElementById('s2_btn1').style.background = (sub === 1) ? '#2563eb' : '#64748b';
+        document.getElementById('s2_btn2').style.background = (sub === 2) ? '#2563eb' : '#64748b';
 
-        const ox = 140, oy = 140, scale = 50;
+        const tEl = document.getElementById('s2_title');
+        const dEl = document.getElementById('s2_desc');
+        if (sub === 1) {
+          tEl.innerText = "阶段 2.1: 纯矩阵旋转投影 (X * W1)";
+          dEl.innerText = "权重矩阵 W1 把原始正方形网格顺时针旋转 45 度，并压缩投影在对角线 z2 = z1 上。(1,0) 与 (0,1) 投影至相同点 (1,1)。";
+        } else {
+          tEl.innerText = "阶段 2.2: 偏置整体平移 (+ B1)";
+          dEl.innerText = "加上偏置 B1=[-0.5, -1.5] 后，整条线向左平移 0.5、向下平移 1.5，把部分点推入负半区准备给 ReLU 截断！";
+        }
+        updateStep2();
+      }
+
+      function updateStep2() {
+        const ox = 150, oy = 150, scale = 45;
         drawBaseAxes(ctx2, c2.width, c2.height, ox, oy, 'z1', 'z2');
 
-        const pts = [
-          {x: 0, y: 0, l: 0, n: '(0,0)'},
-          {x: 1, y: 0, l: 1, n: '(1,0)'},
-          {x: 0, y: 1, l: 1, n: '(0,1)'},
-          {x: 1, y: 1, l: 0, n: '(1,1)'}
-        ];
-
-        const zPts = pts.map(p => {
-          const z1 = p.x + p.y + b1;
-          const z2 = p.x + p.y + b2;
-          return {z1, z2, l: p.l, n: `${p.n} -> [${z1.toFixed(1)}, ${z2.toFixed(1)}]`};
-        });
-
-        // 画共线直线
-        ctx2.strokeStyle = '#9333ea'; ctx2.lineWidth = 1.5; ctx2.setLineDash([3, 3]);
-        ctx2.beginPath();
-        ctx2.moveTo(ox + (zPts[0].z1 - 0.5) * scale, oy - (zPts[0].z2 - 0.5) * scale);
-        ctx2.lineTo(ox + (zPts[3].z1 + 0.5) * scale, oy - (zPts[3].z2 + 0.5) * scale);
-        ctx2.stroke();
+        // 负半轴虚线
+        ctx2.strokeStyle = '#e2e8f0'; ctx2.setLineDash([3, 3]);
+        ctx2.beginPath(); ctx2.moveTo(20, oy); ctx2.lineTo(ox, oy); ctx2.stroke();
+        ctx2.beginPath(); ctx2.moveTo(ox, oy); ctx2.lineTo(ox, c2.height - 20); ctx2.stroke();
         ctx2.setLineDash([]);
 
-        zPts.forEach(p => {
-          drawPointMarker(ctx2, ox + p.z1 * scale, oy - p.z2 * scale, p.l, p.n);
-        });
+        if (s2Sub === 1) {
+          // 纯矩阵乘法 X * W1
+          const pts = [
+            {z1: 0, z2: 0, l: 0, n: '(0,0) -> [0, 0]'},
+            {z1: 1, z2: 1, l: 1, n: '(1,0)&(0,1) -> [1, 1] 重合!'},
+            {z1: 2, z2: 2, l: 0, n: '(1,1) -> [2, 2]'}
+          ];
+          // 绘制 45度斜线
+          ctx2.strokeStyle = '#9333ea'; ctx2.lineWidth = 2;
+          ctx2.beginPath();
+          ctx2.moveTo(ox - 20, oy + 20);
+          ctx2.lineTo(ox + 2.5 * scale, oy - 2.5 * scale);
+          ctx2.stroke();
+          ctx2.fillStyle = '#9333ea'; ctx2.fillText('45° 对角压缩线 (z2 = z1)', ox + scale, oy - scale * 1.4);
+
+          pts.forEach(p => {
+            drawPointMarker(ctx2, ox + p.z1 * scale, oy - p.z2 * scale, p.l, p.n);
+          });
+        } else {
+          // 加上偏置 + B1 ([-0.5, -1.5])
+          const pts = [
+            {z1: -0.5, z2: -1.5, l: 0, n: '(0,0) -> [-0.5, -1.5]'},
+            {z1: 0.5, z2: -0.5, l: 1, n: '(1,0)&(0,1) -> [0.5, -0.5]'},
+            {z1: 1.5, z2: 0.5, l: 0, n: '(1,1) -> [1.5, 0.5]'}
+          ];
+          // 绘制平移后的直线
+          ctx2.strokeStyle = '#9333ea'; ctx2.lineWidth = 2;
+          ctx2.beginPath();
+          ctx2.moveTo(ox - 1.2 * scale, oy + 2.2 * scale);
+          ctx2.lineTo(ox + 2.2 * scale, oy - 1.2 * scale);
+          ctx2.stroke();
+          ctx2.fillStyle = '#9333ea'; ctx2.fillText('平移后的直线 (依然共线！)', ox + 0.3 * scale, oy + scale * 0.8);
+
+          pts.forEach(p => {
+            drawPointMarker(ctx2, ox + p.z1 * scale, oy - p.z2 * scale, p.l, p.n);
+          });
+        }
       }
-      document.getElementById('s2_b1').addEventListener('input', updateStep2);
-      document.getElementById('s2_b2').addEventListener('input', updateStep2);
-      updateStep2();
+      setS2Sub(1);
 
       // ================= Step 3 渲染 =================
       const c3 = document.getElementById('c_step3'), ctx3 = c3.getContext('2d');
@@ -906,7 +941,6 @@
           return {h1, h2, l: p.l, n: p.n};
         });
 
-        // 检查红点是否重合
         const redDist = Math.hypot(hPts[1].h1 - hPts[2].h1, hPts[1].h2 - hPts[2].h2);
         document.getElementById('s4_overlap').innerText = (redDist < 1e-4) ? `(1,0) 与 (0,1) 精确重合在 (${hPts[1].h1.toFixed(1)}, ${hPts[1].h2.toFixed(1)})` : `红点未重合 (距离: ${redDist.toFixed(2)})`;
 
@@ -939,7 +973,6 @@
         ];
 
         let correct = 0;
-        // 4个样本实际得分判断
         const all4 = [
           {h1: 0.0, h2: 0.0, l: 0},
           {h1: 0.5, h2: 0.0, l: 1},
@@ -956,7 +989,6 @@
         accEl.innerText = `${(correct / 4 * 100).toFixed(0)}% (${correct}/4 ${correct === 4 ? '🎉 完美分类!' : ''})`;
         accEl.style.color = (correct === 4) ? '#16a34a' : '#dc2626';
 
-        // 绘制决策线
         if (Math.abs(wo2) > 1e-4) {
           const h2At0 = -bo / wo2;
           const h2At2 = (-bo - wo1 * 2.2) / wo2;
