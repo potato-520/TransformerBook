@@ -496,7 +496,7 @@
     <h1>0.2 多层感知机与矩阵表达 (MLP & Matrix Representation)</h1>
     <div class="card">
       <strong>本节核心认知目标：</strong><br/>
-      掌握线性代数的几何灵魂：理解 <strong>2x2 矩阵的列向量就是基向量 $\hat{i}$ 和 $\hat{j}$ 的落脚点</strong>。彻底搞懂如何精确构造旋转指定角度（如 45°、25°）的矩阵，以及为什么行列式为 0 会将整个 2D 平面“拍扁降维”成一条线，并亲手操作 6 个独立交互动画看懂 XOR 的破解！
+      掌握线性代数的几何灵魂：理解 <strong>2x2 矩阵的列向量就是基向量 $\hat{i}$ 和 $\hat{j}$ 的落脚点</strong>。彻底搞懂旋转矩阵 $R(\theta)$ 与全 1 投影矩阵 $W_1$ 的 SVD 几何分解（旋转 $\to$ 压扁 $\to$ 转回），理解神经网络如何通过矩阵提取 $x_1+x_2$ 决定性特征，并亲手操作 6 个独立交互动画看懂 XOR 的破解！
     </div>
 
     <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
@@ -526,40 +526,35 @@
     <!-- ==================== 前置线性代数几何基础 ==================== -->
     <h2>2. 🧭 前置几何心智模型：2x2 矩阵如何控制旋转与投影？</h2>
     <div class="logic-box" style="background: #eff6ff; border-color: #bfdbfe; color: #1e40af;">
-      <h3 style="margin-top: 0; color: #1e3a8a;">💡 终极直觉秘密：矩阵的每一列，就是基向量的“新落脚点”！</h3>
+      <h3 style="margin-top: 0; color: #1e3a8a;">💡 终极直觉秘密：矩阵的每一行/列，就是基向量的“新落脚点”！</h3>
       <p>
         在 2D 平面上，任何一个点 $(x_1, x_2)$ 本质上都是由两个<strong>标准基向量（Basis Vectors）</strong>搭建起来的：
         $$\vec{x} = x_1 \hat{i} + x_2 \hat{j} = x_1 \begin{bmatrix} 1 \\ 0 \end{bmatrix} + x_2 \begin{bmatrix} 0 \\ 1 \end{bmatrix}$$
         其中 $\hat{i} = (1, 0)$ 指向右方，$\hat{j} = (0, 1)$ 指向上方。<br/>
         当我们用一个矩阵 $W = \begin{bmatrix} w_{11} & w_{12} \\ w_{21} & w_{22} \end{bmatrix}$ 对平面进行变换时：<br/>
-        - <strong>第 1 行（或列）$[w_{11}, w_{12}]$</strong>：就是变换后 $\hat{i}$ 降落的新坐标！<br/>
-        - <strong>第 2 行（或列）$[w_{21}, w_{22}]$</strong>：就是变换后 $\hat{j}$ 降落的新坐标！<br/>
-        <strong>你只要决定了 $\hat{i}$ 和 $\hat{j}$ 落在哪里，整个平面的所有点就会被等比例“拖拽”过去！</strong>
+        - <strong>第 1 行 $[w_{11}, w_{12}]$</strong>：就是变换后 $\hat{i}$ 降落的新坐标！<br/>
+        - <strong>第 2 行 $[w_{21}, w_{22}]$</strong>：就是变换后 $\hat{j}$ 降落的新坐标！
       </p>
     </div>
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 18px 0;">
       <!-- 旋转构造法 -->
       <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px;">
-        <strong style="color: #0f172a; font-size: 14px;">1. 如何精确构造旋转 $\theta$ 角度的矩阵？</strong>
+        <strong style="color: #0f172a; font-size: 14px;">1. 纯旋转矩阵 $R(\theta)$ (保真变换，行列式 = 1)</strong>
         <p style="font-size: 12.8px; color: #475569; margin: 6px 0 0 0; line-height: 1.6;">
           让 $\hat{i}$ 逆时针转 $\theta \to (\cos\theta, \sin\theta)$；让 $\hat{j}$ 逆时针转 $\theta \to (-\sin\theta, \cos\theta)$。<br/>
           $$R(\theta) = \begin{bmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{bmatrix}$$
-          - <strong>要旋转 45°</strong>：$\cos 45^\circ = \sin 45^\circ = \frac{\sqrt{2}}{2} \approx 0.707 \implies \begin{bmatrix} 0.707 & -0.707 \\ 0.707 & 0.707 \end{bmatrix}$<br/>
-          - <strong>要旋转 25°</strong>：$\cos 25^\circ \approx 0.906, \sin 25^\circ \approx 0.423 \implies \begin{bmatrix} 0.906 & -0.423 \\ 0.423 & 0.906 \end{bmatrix}$
+          - 旋转 45°：$\begin{bmatrix} 0.707 & -0.707 \\ 0.707 & 0.707 \end{bmatrix}$（网格形状大小不变，只转角度）。
         </p>
       </div>
 
-      <!-- 投影构造法 -->
+      <!-- 投影构造法与分解 -->
       <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px;">
-        <strong style="color: #0f172a; font-size: 14px;">2. 为什么 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$ 会把平面拍扁成一条线？</strong>
+        <strong style="color: #0f172a; font-size: 14px;">2. 投影矩阵 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$ 的几何三步分解 (SVD)</strong>
         <p style="font-size: 12.8px; color: #475569; margin: 6px 0 0 0; line-height: 1.6;">
-          观察这组参数（<strong>两个基向量全部降落在 (1,1)</strong>）：<br/>
-          - 🔴 红色基向量 $\hat{i}=(1,0) \times W_1 = [1, 1]$；<br/>
-          - 🟢 绿色基向量 $\hat{j}=(0,1) \times W_1 = [1, 1]$！<br/>
-          两个基向量被强行合并重叠。对于任意输入点 $(x_1, x_2)$：
-          $$[x_1, x_2] \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix} = [x_1 + x_2, x_1 + x_2] = (x_1 + x_2) \cdot [1, 1]$$
-          <strong>结果：整个 2D 平面被彻底“拍扁（降维投影）”成了一条斜率为 1 的 45 度直线！</strong>
+          为什么 $W_1$ 能把平面拍扁？它在数学上由 3 步复合而成：<br/>
+          $$W_1 = \underbrace{R(45^\circ)}_{\text{1.转回45°}} \times \underbrace{\begin{bmatrix} 2 & 0 \\ 0 & 0 \end{bmatrix}}_{\text{2.对角线拉伸2倍,垂直方向压扁至0}} \times \underbrace{R(-45^\circ)}_{\text{3.顺时针转45°}}$$
+          <strong>物理意义：</strong>它把垂直于对角线的无关差异 $(x_1 - x_2)$ 强行压扁过滤为 0，<strong>只提取并放大了决定性的总和特征 $(x_1 + x_2)$！</strong>
         </p>
       </div>
     </div>
@@ -622,6 +617,7 @@
         ctxB.strokeStyle = '#e2e8f0';
         ctxB.lineWidth = 1;
         for (let i = -2; i <= 2; i++) {
+          // 水平变换线
           ctxB.beginPath();
           const x1 = -2 * bW11 + i * bW21, y1 = -2 * bW12 + i * bW22;
           const x2 = 2 * bW11 + i * bW21, y2 = 2 * bW12 + i * bW22;
@@ -629,6 +625,7 @@
           ctxB.lineTo(bOx + x2 * bScale, bOy - y2 * bScale);
           ctxB.stroke();
 
+          // 垂直变换线
           ctxB.beginPath();
           const gx1 = i * bW11 - 2 * bW21, gy1 = i * bW12 - 2 * bW22;
           const gx2 = i * bW11 + 2 * bW21, gy2 = i * bW12 + 2 * bW22;
@@ -645,12 +642,10 @@
         const isOverlap = (Math.abs(bW11 - bW21) < 1e-3 && Math.abs(bW12 - bW22) < 1e-3);
 
         if (isOverlap) {
-          // 重合时画双色箭头
           const ix = bOx + bW11 * bScale, iy = bOy - bW12 * bScale;
           ctxB.strokeStyle = '#9333ea'; ctxB.lineWidth = 4;
           ctxB.beginPath(); ctxB.moveTo(bOx, bOy); ctxB.lineTo(ix, iy); ctxB.stroke();
 
-          // 红色小圆点 + 绿色外环
           ctxB.fillStyle = '#dc2626';
           ctxB.beginPath(); ctxB.arc(ix, iy, 5, 0, Math.PI * 2); ctxB.fill();
           ctxB.strokeStyle = '#16a34a'; ctxB.lineWidth = 2.5;
@@ -660,7 +655,6 @@
           ctxB.font = 'bold 12px Segoe UI';
           ctxB.fillText('î 与 ĵ 均重合降落在 (1,1) !', ix + 12, iy - 6);
         } else {
-          // 绘制基向量 i 箭头 (红色)
           ctxB.strokeStyle = '#dc2626'; ctxB.fillStyle = '#dc2626'; ctxB.lineWidth = 3;
           ctxB.beginPath(); ctxB.moveTo(bOx, bOy);
           const ix = bOx + bW11 * bScale, iy = bOy - bW12 * bScale;
@@ -669,7 +663,6 @@
           ctxB.font = 'bold 12px Segoe UI';
           ctxB.fillText('î (1,0)', ix + 6, iy - 4);
 
-          // 绘制基向量 j 箭头 (绿色)
           ctxB.strokeStyle = '#16a34a'; ctxB.fillStyle = '#16a34a'; ctxB.lineWidth = 3;
           ctxB.beginPath(); ctxB.moveTo(bOx, bOy);
           const jx = bOx + bW21 * bScale, jy = bOy - bW22 * bScale;
@@ -678,7 +671,6 @@
           ctxB.fillText('ĵ (0,1)', jx + 6, jy - 4);
         }
 
-        // 更新数值文本
         document.getElementById('basis_mat_disp').innerText = `W = [[${bW11.toFixed(2)}, ${bW12.toFixed(2)}],\n     [${bW21.toFixed(2)}, ${bW22.toFixed(2)}]]`;
         document.getElementById('i_pos').innerText = `(${bW11.toFixed(2)}, ${bW12.toFixed(2)})`;
         document.getElementById('j_pos').innerText = `(${bW21.toFixed(2)}, ${bW22.toFixed(2)})`;
