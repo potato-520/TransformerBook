@@ -496,7 +496,7 @@
     <h1>0.2 多层感知机与矩阵表达 (MLP & Matrix Representation)</h1>
     <div class="card">
       <strong>本节核心认知目标：</strong><br/>
-      通过 <strong>5 个独立的可调节交互动画</strong>，微观拆解“空间扭曲（Space Warping）”的每一步物理细节：从原始输入 $\to$ 矩阵旋转剪切 $\to$ 偏置平移 $\to$ ReLU 二极管截断 $\to$ 隐层特征重构 $\to$ 输出层单刀切割，亲手调节参数见证 XOR 世纪难题的破解！
+      掌握线性代数的几何灵魂：理解 <strong>2x2 矩阵的列向量就是基向量 $\hat{i}$ 和 $\hat{j}$ 的落脚点</strong>。彻底搞懂如何精确构造旋转指定角度（如 45°、25°）的矩阵，以及为什么行列式为 0 会将整个 2D 平面“拍扁降维”成一条线，并亲手操作 6 个独立交互动画看懂 XOR 的破解！
     </div>
 
     <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
@@ -523,9 +523,185 @@
       </p>
     </div>
 
-    <h2>2. 🔬 显微镜级拆解：5 步空间折叠与独立交互动画</h2>
+    <!-- ==================== 前置线性代数几何基础 ==================== -->
+    <h2>2. 🧭 前置几何心智模型：2x2 矩阵如何控制旋转与投影？</h2>
+    <div class="logic-box" style="background: #eff6ff; border-color: #bfdbfe; color: #1e40af;">
+      <h3 style="margin-top: 0; color: #1e3a8a;">💡 终极直觉秘密：矩阵的每一列，就是基向量的“新落脚点”！</h3>
+      <p>
+        在 2D 平面上，任何一个点 $(x_1, x_2)$ 本质上都是由两个<strong>标准基向量（Basis Vectors）</strong>搭建起来的：
+        $$\vec{x} = x_1 \hat{i} + x_2 \hat{j} = x_1 \begin{bmatrix} 1 \\ 0 \end{bmatrix} + x_2 \begin{bmatrix} 0 \\ 1 \end{bmatrix}$$
+        其中 $\hat{i} = (1, 0)$ 指向右方，$\hat{j} = (0, 1)$ 指向上方。<br/>
+        当我们用一个矩阵 $W = \begin{bmatrix} w_{11} & w_{12} \\ w_{21} & w_{22} \end{bmatrix}$ 对平面进行变换时：<br/>
+        - <strong>第 1 行（或列）$[w_{11}, w_{12}]$</strong>：就是变换后 $\hat{i}$ 降落的新坐标！<br/>
+        - <strong>第 2 行（或列）$[w_{21}, w_{22}]$</strong>：就是变换后 $\hat{j}$ 降落的新坐标！<br/>
+        <strong>你只要决定了 $\hat{i}$ 和 $\hat{j}$ 落在哪里，整个平面的所有点就会被等比例“拖拽”过去！</strong>
+      </p>
+    </div>
 
-    <!-- ==================== Step 1 ==================== -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 18px 0;">
+      <!-- 旋转构造法 -->
+      <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px;">
+        <strong style="color: #0f172a; font-size: 14px;">1. 如何精确构造旋转 $\theta$ 角度的矩阵？</strong>
+        <p style="font-size: 12.8px; color: #475569; margin: 6px 0 0 0; line-height: 1.6;">
+          让 $\hat{i}$ 逆时针转 $\theta \to (\cos\theta, \sin\theta)$；让 $\hat{j}$ 逆时针转 $\theta \to (-\sin\theta, \cos\theta)$。<br/>
+          $$R(\theta) = \begin{bmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{bmatrix}$$
+          - <strong>要旋转 45°</strong>：$\cos 45^\circ = \sin 45^\circ = \frac{\sqrt{2}}{2} \approx 0.707 \implies \begin{bmatrix} 0.707 & -0.707 \\ 0.707 & 0.707 \end{bmatrix}$<br/>
+          - <strong>要旋转 25°</strong>：$\cos 25^\circ \approx 0.906, \sin 25^\circ \approx 0.423 \implies \begin{bmatrix} 0.906 & -0.423 \\ 0.423 & 0.906 \end{bmatrix}$
+        </p>
+      </div>
+
+      <!-- 投影构造法 -->
+      <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px;">
+        <strong style="color: #0f172a; font-size: 14px;">2. 为什么 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$ 会把平面拍扁成一条线？</strong>
+        <p style="font-size: 12.8px; color: #475569; margin: 6px 0 0 0; line-height: 1.6;">
+          观察这组参数：<br/>
+          - 它把 $\hat{i}=(1,0)$ 送到了 $(1, 1)$；<br/>
+          - 它把 $\hat{j}=(0,1)$ <strong>也送到了同一个方向 $(1, 1)$</strong>！<br/>
+          两个原本垂直独立的基向量，被强行合并在同一方向上。对于任何输入 $(x_1, x_2)$：
+          $$[x_1, x_2] \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix} = [x_1 + x_2, x_1 + x_2] = (x_1 + x_2) \cdot [1, 1]$$
+          <strong>结果：整个 2D 平面被彻底“拍扁（降维投影）”成了一条斜率为 1 的 45 度直线！</strong>
+        </p>
+      </div>
+    </div>
+
+    <!-- 前置互动动画：基向量追踪器 -->
+    <div class="interactive-card">
+      <div class="interactive-title">🎮 矩阵几何基础实验室：拖动角度与基向量观察网格形变</div>
+      
+      <div class="control-panel">
+        <div class="control-group">
+          <label>旋转角度 $\theta$ (0° ~ 360°):</label>
+          <input type="range" id="basis_theta" min="0" max="360" step="5" value="45">
+          <span id="basis_theta_val" style="font-family: Consolas; font-weight: bold; width: 44px;">45°</span>
+        </div>
+        <button class="btn" onclick="presetMatrix('rotate45')">预设：标准 45° 旋转</button>
+        <button class="btn" onclick="presetMatrix('rotate25')" style="background:#64748b;">预设：标准 25° 旋转</button>
+        <button class="btn" onclick="presetMatrix('project45')" style="background:#dc2626;">预设：W1 拍扁投影线</button>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="c_basis" width="440" height="280" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
+        <div style="flex: 1; min-width: 240px;">
+          <div class="logic-box" style="margin-top: 0; font-size: 13px;">
+            <strong>当前对应 2x2 变换矩阵：</strong>
+            <pre style="padding: 10px; font-size: 12px; margin: 8px 0;"><code id="basis_mat_disp">W = [[0.71, -0.71],
+     [0.71,  0.71]]</code></pre>
+            <strong>基向量落脚点状态：</strong><br/>
+            🔴 $\hat{i}$ 终点: <code id="i_pos">(0.71, 0.71)</code><br/>
+            🟢 $\hat{j}$ 终点: <code id="j_pos">(-0.71, 0.71)</code><br/><br/>
+            <strong>空间形态：</strong> <span id="basis_status" style="font-weight: bold; color: #2563eb;">2D 刚体逆时针旋转 45° (面积保真)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const cBasis = document.getElementById('c_basis');
+      const ctxB = cBasis.getContext('2d');
+      const bOx = cBasis.width / 2;
+      const bOy = cBasis.height / 2;
+      const bScale = 70;
+
+      let bW11 = Math.cos(Math.PI / 4), bW12 = -Math.sin(Math.PI / 4);
+      let bW21 = Math.sin(Math.PI / 4), bW22 = Math.cos(Math.PI / 4);
+
+      function drawBasisGrid() {
+        ctxB.clearRect(0, 0, cBasis.width, cBasis.height);
+
+        // 绘制灰色背景原始正交网格
+        ctxB.strokeStyle = '#f1f5f9';
+        ctxB.lineWidth = 1;
+        for (let x = -3; x <= 3; x++) {
+          ctxB.beginPath(); ctxB.moveTo(bOx + x * bScale, 0); ctxB.lineTo(bOx + x * bScale, cBasis.height); ctxB.stroke();
+        }
+        for (let y = -3; y <= 3; y++) {
+          ctxB.beginPath(); ctxB.moveTo(0, bOy + y * bScale); ctxB.lineTo(cBasis.width, bOy + y * bScale); ctxB.stroke();
+        }
+
+        // 绘制变换后的网格线
+        ctxB.strokeStyle = '#e2e8f0';
+        ctxB.lineWidth = 1;
+        for (let i = -2; i <= 2; i++) {
+          // 水平变换线
+          ctxB.beginPath();
+          const x1 = -2 * bW11 + i * bW21, y1 = -2 * bW12 + i * bW22;
+          const x2 = 2 * bW11 + i * bW21, y2 = 2 * bW12 + i * bW22;
+          ctxB.moveTo(bOx + x1 * bScale, bOy - y1 * bScale);
+          ctxB.lineTo(bOx + x2 * bScale, bOy - y2 * bScale);
+          ctxB.stroke();
+
+          // 垂直变换线
+          ctxB.beginPath();
+          const gx1 = i * bW11 - 2 * bW21, gy1 = i * bW12 - 2 * bW22;
+          const gx2 = i * bW11 + 2 * bW21, gy2 = i * bW12 + 2 * bW22;
+          ctxB.moveTo(bOx + gx1 * bScale, bOy - gy1 * bScale);
+          ctxB.lineTo(bOx + gx2 * bScale, bOy - gy2 * bScale);
+          ctxB.stroke();
+        }
+
+        // 坐标轴
+        ctxB.strokeStyle = '#94a3b8'; ctxB.lineWidth = 1.5;
+        ctxB.beginPath(); ctxB.moveTo(0, bOy); ctxB.lineTo(cBasis.width, bOy); ctxB.stroke();
+        ctxB.beginPath(); ctxB.moveTo(bOx, 0); ctxB.lineTo(bOx, cBasis.height); ctxB.stroke();
+
+        // 绘制基向量 i 箭头 (红色)
+        ctxB.strokeStyle = '#dc2626'; ctxB.fillStyle = '#dc2626'; ctxB.lineWidth = 3;
+        ctxB.beginPath(); ctxB.moveTo(bOx, bOy);
+        const ix = bOx + bW11 * bScale, iy = bOy - bW12 * bScale;
+        ctxB.lineTo(ix, iy); ctxB.stroke();
+        ctxB.beginPath(); ctxB.arc(ix, iy, 4, 0, Math.PI * 2); ctxB.fill();
+        ctxB.font = 'bold 12px Segoe UI';
+        ctxB.fillText('î (1,0)', ix + 6, iy - 4);
+
+        // 绘制基向量 j 箭头 (绿色)
+        ctxB.strokeStyle = '#16a34a'; ctxB.fillStyle = '#16a34a'; ctxB.lineWidth = 3;
+        ctxB.beginPath(); ctxB.moveTo(bOx, bOy);
+        const jx = bOx + bW21 * bScale, jy = bOy - bW22 * bScale;
+        ctxB.lineTo(jx, jy); ctxB.stroke();
+        ctxB.beginPath(); ctxB.arc(jx, jy, 4, 0, Math.PI * 2); ctxB.fill();
+        ctxB.fillText('ĵ (0,1)', jx + 6, jy - 4);
+
+        // 更新数值文本
+        document.getElementById('basis_mat_disp').innerText = `W = [[${bW11.toFixed(2)}, ${bW12.toFixed(2)}],\n     [${bW21.toFixed(2)}, ${bW22.toFixed(2)}]]`;
+        document.getElementById('i_pos').innerText = `(${bW11.toFixed(2)}, ${bW12.toFixed(2)})`;
+        document.getElementById('j_pos').innerText = `(${bW21.toFixed(2)}, ${bW22.toFixed(2)})`;
+      }
+
+      function updateThetaSlider() {
+        const deg = parseFloat(document.getElementById('basis_theta').value);
+        document.getElementById('basis_theta_val').innerText = deg + '°';
+        const rad = deg * Math.PI / 180;
+        bW11 = Math.cos(rad); bW12 = -Math.sin(rad);
+        bW21 = Math.sin(rad); bW22 = Math.cos(rad);
+        document.getElementById('basis_status').innerText = `2D 刚体旋转 ${deg}° (网格无畸变)`;
+        document.getElementById('basis_status').style.color = "#2563eb";
+        drawBasisGrid();
+      }
+
+      function presetMatrix(type) {
+        if (type === 'rotate45') {
+          document.getElementById('basis_theta').value = 45;
+          updateThetaSlider();
+        } else if (type === 'rotate25') {
+          document.getElementById('basis_theta').value = 25;
+          updateThetaSlider();
+        } else if (type === 'project45') {
+          bW11 = 1.0; bW12 = 1.0;
+          bW21 = 1.0; bW22 = 1.0;
+          document.getElementById('basis_status').innerText = "⚠️ 两个基向量重合！2D 平面塌陷为 45° 投影直线 (det=0)";
+          document.getElementById('basis_status').style.color = "#dc2626";
+          drawBasisGrid();
+        }
+      }
+
+      document.getElementById('basis_theta').addEventListener('input', updateThetaSlider);
+      drawBasisGrid();
+    </script>
+
+    <!-- ==================== 3. 5 步微观物理过程 ==================== -->
+    <h2>3. 🔬 显微镜级拆解：5 步空间折叠与独立交互动画</h2>
+
+    <!-- Step 1 -->
     <h3>第一步 · 初始输入状态 $(x_1, x_2)$：对角线对峙，单线无解</h3>
     <p>
       在原始 2D 输入空间中，4 个样本点固定在单位正方形的 4 个顶点上：
@@ -568,20 +744,19 @@
       </div>
     </div>
 
-    <!-- ==================== Step 2 (Detailed Split) ==================== -->
+    <!-- Step 2 -->
     <h3>第二步 · 矩阵线性仿射变换 $Z = X W_1 + B_1$：【细拆两阶段】旋转投影与偏置平移</h3>
     <div class="card" style="background: #f8fafc; border: 1px solid #cbd5e1;">
-      <strong>很多人困惑：为什么原始的正方形点会变成斜线上的点？让我们把矩阵乘法和偏置彻底拆开：</strong>
+      <strong>结合上一节的基向量知识，现在完全能看懂这里的两步了：</strong>
       <ol style="margin-bottom: 0;">
         <li>
-          <strong>阶段 2.1 · 纯矩阵乘法 $X \cdot W_1$（旋转、剪切与对角线投影）：</strong><br/>
-          设置权重矩阵 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$。原始基向量 $(1,0) \to (1,1)$，$(0,1) \to (1,1)$。<br/>
-          这相当于把原本正交的正方形坐标轴<strong>顺时针旋转 45 度并压缩投影到了 $z_2 = z_1$ 这条对角线上</strong>！<br/>
+          <strong>阶段 2.1 · 纯矩阵乘法 $X \cdot W_1$（对角线塌陷投影）：</strong><br/>
+          选用 $W_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}$，就是让 $\hat{i}$ 和 $\hat{j}$ 同时指向 $(1,1)$，将 2D 正方形<strong>直接拍扁压缩投影在 $z_2 = z_1$ 这条对角线上</strong>！<br/>
           计算结果：$(0,0) \to (0,0)$，$(1,0)$ 与 $(0,1)$ 均变成 $(1,1)$，$(1,1) \to (2,2)$。
         </li>
         <li style="margin-top: 8px;">
           <strong>阶段 2.2 · 加上偏置向量 $+ B_1$（整体平移至负半区）：</strong><br/>
-          偏置向量 $B_1 = [-0.5, -1.5]$ 就像在平面上用力推了一把，把整条对角线向左平移 0.5、向下平移 1.5！<br/>
+          偏置向量 $B_1 = [-0.5, -1.5]$ 把整条对角线向左平移 0.5、向下平移 1.5！<br/>
           最终坐标：$(0,0) \to (-0.5, -1.5)$，两个红点 $\to (0.5, -0.5)$，$(1,1) \to (1.5, 0.5)$。<br/>
           <strong>⚠️ 关键物理结论：虽然完成了旋转与平移，但 4 个点依然死死排在一条直线上（共线），没有非线性激活函数依然无法分类！</strong>
         </li>
@@ -609,7 +784,7 @@
       </div>
     </div>
 
-    <!-- ==================== Step 3 ==================== -->
+    <!-- Step 3 -->
     <h3>第三步 · 激活函数二极管单向截断：折叠发生的决定性瞬间！</h3>
     <p>
       非线性激活函数 $\text{ReLU}(z) = \max(0, z)$ 生效：<strong>正数原样通过，所有负数被强行推平到 0 轴！</strong><br/>
@@ -636,7 +811,7 @@
       </div>
     </div>
 
-    <!-- ==================== Step 4 ==================== -->
+    <!-- Step 4 -->
     <h3>第四步 · 隐层特征新空间 $(h_1, h_2)$：点位重构与空间重合</h3>
     <p>
       在折叠后的全新坐标系 $(h_1, h_2)$ 中，原本对角线的两个红点 $(1,0)$ 与 $(0,1)$ 因为负半轴被截断，<strong>精确重叠在同一坐标 $(0.5, 0.0)$！</strong><br/>
@@ -672,7 +847,7 @@
       </div>
     </div>
 
-    <!-- ==================== Step 5 ==================== -->
+    <!-- Step 5 -->
     <h3>第五步 · 输出层神经元单刀切分：完美分类通关！</h3>
     <p>
       输出层接收折叠后的 $(h_1, h_2)$，执行简单线性判决 $y = w_{o1} h_1 + w_{o2} h_2 + b_o$。<br/>
@@ -824,20 +999,17 @@
         const ox = 150, oy = 150, scale = 45;
         drawBaseAxes(ctx2, c2.width, c2.height, ox, oy, 'z1', 'z2');
 
-        // 负半轴虚线
         ctx2.strokeStyle = '#e2e8f0'; ctx2.setLineDash([3, 3]);
         ctx2.beginPath(); ctx2.moveTo(20, oy); ctx2.lineTo(ox, oy); ctx2.stroke();
         ctx2.beginPath(); ctx2.moveTo(ox, oy); ctx2.lineTo(ox, c2.height - 20); ctx2.stroke();
         ctx2.setLineDash([]);
 
         if (s2Sub === 1) {
-          // 纯矩阵乘法 X * W1
           const pts = [
             {z1: 0, z2: 0, l: 0, n: '(0,0) -> [0, 0]'},
             {z1: 1, z2: 1, l: 1, n: '(1,0)&(0,1) -> [1, 1] 重合!'},
             {z1: 2, z2: 2, l: 0, n: '(1,1) -> [2, 2]'}
           ];
-          // 绘制 45度斜线
           ctx2.strokeStyle = '#9333ea'; ctx2.lineWidth = 2;
           ctx2.beginPath();
           ctx2.moveTo(ox - 20, oy + 20);
@@ -849,13 +1021,11 @@
             drawPointMarker(ctx2, ox + p.z1 * scale, oy - p.z2 * scale, p.l, p.n);
           });
         } else {
-          // 加上偏置 + B1 ([-0.5, -1.5])
           const pts = [
             {z1: -0.5, z2: -1.5, l: 0, n: '(0,0) -> [-0.5, -1.5]'},
             {z1: 0.5, z2: -0.5, l: 1, n: '(1,0)&(0,1) -> [0.5, -0.5]'},
             {z1: 1.5, z2: 0.5, l: 0, n: '(1,1) -> [1.5, 0.5]'}
           ];
-          // 绘制平移后的直线
           ctx2.strokeStyle = '#9333ea'; ctx2.lineWidth = 2;
           ctx2.beginPath();
           ctx2.moveTo(ox - 1.2 * scale, oy + 2.2 * scale);
@@ -1009,7 +1179,7 @@
       updateStep5();
     </script>
 
-    <h2>3. 输入与输出 Tensor Shape 变换追踪</h2>
+    <h2>4. 输入与输出 Tensor Shape 变换追踪</h2>
     <div class="logic-box">
       <strong>全链路矩阵形状轨迹 (以 Batch Size $B=4$, 输入维度 2, 隐藏维度 2, 输出维度 1 为例)：</strong><br/>
       1. 输入张量 $X$：<span class="shape-badge">Shape: [4, 2]</span> (4 个 XOR 样本点)<br/>
@@ -1019,7 +1189,7 @@
       5. 最终输出：$Y = H \cdot W_2 + B_2 \implies$ <span class="shape-badge">Shape: [4, 1]</span>
     </div>
 
-    <h2>4. Python / NumPy 极简 XOR 网络验证代码</h2>
+    <h2>5. Python / NumPy 极简 XOR 网络验证代码</h2>
     <pre><code class="language-python">import numpy as np
 
 class XORNet:
@@ -1053,14 +1223,14 @@ print("\n输出层判决分值 Y_pred (>=0 为 1, <0 为 0):\n", Y_pred)
 print("\n最终分类标签:\n", (Y_pred >= 0).astype(int))
 </code></pre>
 
-    <h2>5. 打开黑盒：真实工程细节 (GEMM 与 Tensor Core)</h2>
+    <h2>6. 打开黑盒：真实工程细节 (GEMM 与 Tensor Core)</h2>
     <div class="card">
       <strong>为什么整个 AI 工业界都为 GEMM 痴狂？</strong><br/>
       现代 NVIDIA GPU（如 H100/A100）的 <strong>Tensor Core</strong> 硬件加速单元，其本质就是一条超高吞吐的专用矩阵乘流水线！<br/>
       它通过硬件脉动阵列（Systolic Array），在一个时钟周期内就能同时完成 $16 \times 16$ 矩阵的高精度乘累加，计算密度比传统标量 CPU 提升了整整上千倍！
     </div>
 
-    <h2>6. 动手实验与思考题</h2>
+    <h2>7. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：如果去除非线性激活函数，堆叠 100 层 MLP 会怎样？</strong><br/>
       如果 $H_1 = X W_1, H_2 = H_1 W_2, \dots, Y = H_{99} W_{100}$。<br/>
