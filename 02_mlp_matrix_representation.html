@@ -284,33 +284,6 @@
       margin: 18px 0;
     }
 
-    /* 底部导航 */
-    .footer-nav {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 40px;
-      padding-top: 24px;
-      border-top: 1px solid #e2e8f0;
-      font-size: 14px;
-    }
-
-    .footer-nav a {
-      color: #2563eb;
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    .footer-nav a:hover {
-      text-decoration: underline;
-    }
-
-    footer {
-      text-align: center;
-      margin-top: 30px;
-      color: #94a3b8;
-      font-size: 12.5px;
-    }
-  
     /* ==========================================
        5. 移动端 (手机竖屏) 深度响应式适配
        ========================================== */
@@ -409,7 +382,6 @@
         box-sizing: border-box;
       }
 
-      /* 表格与代码横向滑动 */
       table {
         display: block;
         width: 100%;
@@ -436,14 +408,12 @@
         font-size: 12px;
       }
 
-      /* Canvas 手机宽度自适应 */
       canvas {
         max-width: 100% !important;
         height: auto !important;
         touch-action: pan-y;
       }
 
-      /* 底部导航按钮手机端大按钮设计 */
       .footer-nav {
         flex-direction: column;
         gap: 10px;
@@ -463,6 +433,32 @@
       }
     }
 
+    /* 底部导航 */
+    .footer-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .footer-nav a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
   </style>
 
   <!-- MathJax 3 显式配置支持单美元符号 $ 作为行内公式 -->
@@ -500,7 +496,7 @@
     <h1>0.2 多层感知机与矩阵表达 (MLP & Matrix Representation)</h1>
     <div class="card">
       <strong>本节核心认知目标：</strong><br/>
-      理解当多个神经元并联与串联时，如何从单条直线的局限跨越到“多维坐标空间扭曲”，并将复杂的神经元连线统一收拢为极其优美、专为现代 GPU 定制的矩阵乘法 $Y = XW + B$。
+      通过全流程图形化拆解，彻底看懂 MLP 是如何像折纸一样“扭曲并折叠坐标空间”来化解 XOR 世纪死穴的，并将复杂的神经元连线统一收拢为现代 GPU 极速运算的矩阵表达 $Y = \text{ReLU}(X W_1 + B_1) W_2 + B_2$。
     </div>
 
     <h2>1. 📜 科学史话：三幕剧（背景、危机与大师破局）</h2>
@@ -527,179 +523,347 @@
       </p>
     </div>
 
-    <h2>2. 它是如何通过空间扭曲解决 XOR 问题的？</h2>
+    <h2>2. 🎨 图解空间扭曲：三步看懂 MLP 如何破解 XOR 死穴</h2>
     <p>
-      在 2D 坐标系中，XOR 的 4 个点 $(0,0), (1,1)$ 为 0，$(0,1), (1,0)$ 为 1。无论你怎么画单条直线，都无法将对角线两组点分开。<br/>
-      但是，MLP 的隐藏层就像<strong>一块有弹性的橡胶布</strong>：
+      为了让你彻底看懂“空间扭曲”的每一步物理细节，我们用经典的 2 隐藏神经元小网络，一步步画出图形变换的全过程：
     </p>
-    <ol>
-      <li>矩阵乘法 $X W_1$：对这块橡胶布进行<strong>旋转、拉伸与倾斜</strong>（仿射变换）；</li>
-      <li>激活函数 $\sigma$：将橡胶布沿着某个轴<strong>对折折弯</strong>（非线性折叠）；</li>
-      <li>折叠之后，原本处在对角线两端的点被挤压到了同一侧，此时输出层再来一刀笔直的切割，XOR 迎刃而解！</li>
-    </ol>
 
-    <h2>3. 输入与输出 Tensor Shape 变换追踪</h2>
-    <div class="logic-box">
-      <strong>全链路矩阵形状轨迹 (以 Batch Size $B=4$, 输入维度 2, 隐藏维度 4, 输出维度 1 为例)：</strong><br/>
-      1. 输入张量 $X$：<span class="shape-badge">Shape: [4, 2]</span> (4 个样本，每个样本 2 个特征)<br/>
-      2. 隐藏权重 $W_1$：<span class="shape-badge">Shape: [2, 4]</span>，偏置 $B_1$：<span class="shape-badge">Shape: [4]</span><br/>
-      3. 隐藏层计算：$H = \text{ReLU}(X \cdot W_1 + B_1) \implies$ <span class="shape-badge">Shape: [4, 4]</span> (升维到 4 维特征空间)<br/>
-      4. 输出权重 $W_2$：<span class="shape-badge">Shape: [4, 1]</span>，偏置 $B_2$：<span class="shape-badge">Shape: [1]</span><br/>
-      5. 最终输出：$Y = H \cdot W_2 + B_2 \implies$ <span class="shape-badge">Shape: [4, 1]</span>
+    <!-- 图解三部曲 -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin: 20px 0;">
+      <!-- 图 1 -->
+      <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px;">
+        <div style="font-weight: bold; color: #0f172a; margin-bottom: 8px; font-size: 14.5px;">
+          📍 阶段 1：原始输入空间 $(x_1, x_2)$
+        </div>
+        <div style="font-size: 13px; color: #475569; margin-bottom: 10px;">
+          对角线分布导致<strong>单条直线绝对不可分</strong>：
+        </div>
+        <svg viewBox="0 0 240 180" style="width: 100%; background: #ffffff; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <line x1="30" y1="150" x2="220" y2="150" stroke="#94a3b8" stroke-width="1.5" />
+          <line x1="30" y1="150" x2="30" y2="20" stroke="#94a3b8" stroke-width="1.5" />
+          <text x="210" y="165" font-size="11" fill="#64748b">x1</text>
+          <text x="15" y="30" font-size="11" fill="#64748b">x2</text>
+          
+          <line x1="20" y1="90" x2="200" y2="90" stroke="#ef4444" stroke-dasharray="4" stroke-width="1.5"/>
+          <text x="100" y="82" font-size="10" fill="#dc2626">单线无论怎么画必错</text>
+
+          <rect x="24" y="144" width="12" height="12" fill="#16a34a" stroke="#0f172a"/>
+          <text x="40" y="145" font-size="10" fill="#166534">(0,0): 0</text>
+
+          <rect x="144" y="24" width="12" height="12" fill="#16a34a" stroke="#0f172a"/>
+          <text x="160" y="35" font-size="10" fill="#166534">(1,1): 0</text>
+
+          <circle cx="150" cy="150" r="6" fill="#dc2626" stroke="#0f172a"/>
+          <text x="160" y="155" font-size="10" fill="#dc2626">(1,0): 1</text>
+
+          <circle cx="30" cy="30" r="6" fill="#dc2626" stroke="#0f172a"/>
+          <text x="42" y="30" font-size="10" fill="#dc2626">(0,1): 1</text>
+        </svg>
+      </div>
+
+      <!-- 图 2 -->
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 16px;">
+        <div style="font-weight: bold; color: #1e40af; margin-bottom: 8px; font-size: 14.5px;">
+          ✂️ 阶段 2：隐藏层 2 个神经元联合夹击
+        </div>
+        <div style="font-size: 13px; color: #475569; margin-bottom: 10px;">
+          两道门槛截断：$h_1=\text{ReLU}(x_1+x_2-0.5)$ 与 $h_2=\text{ReLU}(x_1+x_2-1.5)$
+        </div>
+        <svg viewBox="0 0 240 180" style="width: 100%; background: #ffffff; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <line x1="30" y1="150" x2="220" y2="150" stroke="#94a3b8" stroke-width="1.5" />
+          <line x1="30" y1="150" x2="30" y2="20" stroke="#94a3b8" stroke-width="1.5" />
+          
+          <line x1="30" y1="100" x2="100" y2="150" stroke="#2563eb" stroke-width="2" />
+          <text x="75" y="115" font-size="9" fill="#2563eb">线1 (h1>0)</text>
+
+          <line x1="30" y1="40" x2="170" y2="150" stroke="#9333ea" stroke-width="2" />
+          <text x="135" y="85" font-size="9" fill="#9333ea">线2 (h2>0)</text>
+
+          <rect x="24" y="144" width="12" height="12" fill="#16a34a"/>
+          <rect x="144" y="24" width="12" height="12" fill="#16a34a"/>
+          <circle cx="150" cy="150" r="6" fill="#dc2626"/>
+          <circle cx="30" cy="30" r="6" fill="#dc2626"/>
+        </svg>
+      </div>
+
+      <!-- 图 3 -->
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px;">
+        <div style="font-weight: bold; color: #166534; margin-bottom: 8px; font-size: 14.5px;">
+          ✨ 阶段 3：映射到隐层新空间 $(h_1, h_2)$
+        </div>
+        <div style="font-size: 13px; color: #475569; margin-bottom: 10px;">
+          空间被折叠，<strong>两类点瞬间变成线性可分</strong>！
+        </div>
+        <svg viewBox="0 0 240 180" style="width: 100%; background: #ffffff; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <line x1="30" y1="150" x2="220" y2="150" stroke="#94a3b8" stroke-width="1.5" />
+          <line x1="30" y1="150" x2="30" y2="20" stroke="#94a3b8" stroke-width="1.5" />
+          <text x="210" y="165" font-size="11" fill="#64748b">h1</text>
+          <text x="15" y="30" font-size="11" fill="#64748b">h2</text>
+          
+          <line x1="20" y1="130" x2="210" y2="50" stroke="#16a34a" stroke-width="2.5" />
+          <text x="125" y="65" font-size="10" fill="#166534">输出层一刀完美切开！</text>
+
+          <rect x="24" y="144" width="12" height="12" fill="#16a34a"/>
+          <text x="38" y="140" font-size="9" fill="#166534">(0,0) → (0, 0)</text>
+
+          <circle cx="100" cy="150" r="7" fill="#dc2626"/>
+          <text x="75" y="170" font-size="9" fill="#dc2626">(0,1)&(1,0) 重合在 (0.5, 0)</text>
+
+          <rect x="180" y="50" width="12" height="12" fill="#16a34a"/>
+          <text x="135" y="40" font-size="9" fill="#166534">(1,1) → (1.5, 0.5)</text>
+        </svg>
+      </div>
     </div>
 
-    <h2>4. 黑盒 JS 可交互动画：2D 网格矩阵仿射变换仪</h2>
+    <!-- 空间坐标映射对比表 -->
+    <div class="logic-box">
+      <strong>🔢 隐藏层坐标映射计算实录（空间折叠的数学真相）：</strong>
+      <table>
+        <thead>
+          <tr>
+            <th>原始样本 $(x_1, x_2)$</th>
+            <th>真实标签</th>
+            <th>隐藏神经元 1: $h_1 = \text{ReLU}(x_1+x_2-0.5)$</th>
+            <th>隐藏神经元 2: $h_2 = \text{ReLU}(x_1+x_2-1.5)$</th>
+            <th>新特征坐标 $(h_1, h_2)$</th>
+            <th>最终相对位置状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>$(0, 0)$</strong></td>
+            <td><span style="color:#16a34a; font-weight:bold;">0 (安全)</span></td>
+            <td>$\text{ReLU}(-0.5) = 0.0$</td>
+            <td>$\text{ReLU}(-1.5) = 0.0$</td>
+            <td><code>(0.0, 0.0)</code></td>
+            <td>位于原点</td>
+          </tr>
+          <tr>
+            <td><strong>$(1, 0)$</strong></td>
+            <td><span style="color:#dc2626; font-weight:bold;">1 (危险)</span></td>
+            <td>$\text{ReLU}(0.5) = 0.5$</td>
+            <td>$\text{ReLU}(-0.5) = 0.0$</td>
+            <td><code>(0.5, 0.0)</code></td>
+            <td rowspan="2"><strong>两个红点在空间中被折叠重合在同一处！</strong></td>
+          </tr>
+          <tr>
+            <td><strong>$(0, 1)$</strong></td>
+            <td><span style="color:#dc2626; font-weight:bold;">1 (危险)</span></td>
+            <td>$\text{ReLU}(0.5) = 0.5$</td>
+            <td>$\text{ReLU}(-0.5) = 0.0$</td>
+            <td><code>(0.5, 0.0)</code></td>
+          </tr>
+          <tr>
+            <td><strong>$(1, 1)$</strong></td>
+            <td><span style="color:#16a34a; font-weight:bold;">0 (安全)</span></td>
+            <td>$\text{ReLU}(1.5) = 1.5$</td>
+            <td>$\text{ReLU}(0.5) = 0.5$</td>
+            <td><code>(1.5, 0.5)</code></td>
+            <td>被拉扯到右上角</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-bottom: 0;">
+        💡 <strong>几何物理结论：</strong>原本在对角线上互相对峙的红点和绿点，经过 ReLU 的单侧截断（$\le 0$ 的部分全部强行按压在 0 轴上），**空间被活生生地“对折”了**！在新的 $(h_1, h_2)$ 坐标系中，红点排在中间，绿点分布在两端，输出层只需画出一条简单的斜线 $y = h_1 - 2 h_2 - 0.25$，就能以 100% 精度完美切割！
+      </p>
+    </div>
+
+    <h2>3. 黑盒 JS 可交互动画：XOR 空间折叠动态演练器</h2>
     <p>
-      调节下方滑块改变矩阵权重 $W_{11}, W_{12}, W_{21}, W_{22}$，观察原始正交笛卡尔坐标网格（灰色）是如何被矩阵线性变换（蓝色）拉伸、旋转与剪切的！
+      点击下方按钮分步演练，观察 4 个点是如何从原始对角线纠缠状态，平滑过渡并最终变为线性可分的！
     </p>
 
     <div class="interactive-card">
-      <div class="interactive-title">🎮 矩阵几何变换与坐标拉伸模拟器</div>
+      <div class="interactive-title">🎮 空间扭曲全流程单步交互演练台</div>
       
       <div class="control-panel">
-        <div class="control-group">
-          <label>W11 (X 轴缩放):</label>
-          <input type="range" id="w11" min="-2" max="2" step="0.1" value="1.0">
-          <span id="w11_disp" style="font-family: Consolas; font-weight: bold; width: 32px;">1.0</span>
-        </div>
-        <div class="control-group">
-          <label>W12 (剪切分量):</label>
-          <input type="range" id="w12" min="-2" max="2" step="0.1" value="0.5">
-          <span id="w12_disp" style="font-family: Consolas; font-weight: bold; width: 32px;">0.5</span>
-        </div>
-        <div class="control-group">
-          <label>W21 (剪切分量):</label>
-          <input type="range" id="w21" min="-2" max="2" step="0.1" value="0.0">
-          <span id="w21_disp" style="font-family: Consolas; font-weight: bold; width: 32px;">0.0</span>
-        </div>
-        <div class="control-group">
-          <label>W22 (Y 轴缩放):</label>
-          <input type="range" id="w22" min="-2" max="2" step="0.1" value="1.0">
-          <span id="w22_disp" style="font-family: Consolas; font-weight: bold; width: 32px;">1.0</span>
-        </div>
+        <button class="btn" onclick="setXORStage(1)" id="btn_st1">1. 原始空间 (x1, x2) 对角死锁</button>
+        <button class="btn" onclick="setXORStage(2)" id="btn_st2" style="background: #64748b;">2. 隐藏层 2 道折叠线切分</button>
+        <button class="btn" onclick="setXORStage(3)" id="btn_st3" style="background: #64748b;">3. 隐层空间 (h1, h2) 线性可分</button>
       </div>
 
-      <canvas id="matrixCanvas" width="600" height="320" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; display: block; margin: 0 auto;"></canvas>
+      <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+        <canvas id="xorCanvas" width="480" height="280" style="border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;"></canvas>
+        <div style="flex: 1; min-width: 240px;">
+          <div class="logic-box" style="margin-top: 0;">
+            <strong>当前视图：</strong><br/>
+            <span id="xor_stage_title" style="font-weight: bold; color: #2563eb; font-size: 15px;">阶段 1：原始输入空间 (x1, x2)</span><br/><br/>
+            <strong>几何状态解构：</strong><br/>
+            <span id="xor_stage_desc" style="font-size: 13.5px; color: #334155;">(0,0) 与 (1,1) 为绿，(1,0) 与 (0,1) 为红。两条对角线互相交叉，任何单一笔直超平面均无法实现分类。</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
-      const mCanvas = document.getElementById('matrixCanvas');
-      const mCtx = mCanvas.getContext('2d');
-      const midX = mCanvas.width / 2;
-      const midY = mCanvas.height / 2;
-      const scale = 45;
+      const xCanvas = document.getElementById('xorCanvas');
+      const xCtx = xCanvas.getContext('2d');
 
-      function drawMatrixGrid() {
-        const w11 = parseFloat(document.getElementById('w11').value);
-        const w12 = parseFloat(document.getElementById('w12').value);
-        const w21 = parseFloat(document.getElementById('w21').value);
-        const w22 = parseFloat(document.getElementById('w22').value);
+      function drawXORStage(stage) {
+        xCtx.clearRect(0, 0, xCanvas.width, xCanvas.height);
+        const originX = 60, originY = 220, unit = 130;
 
-        document.getElementById('w11_disp').innerText = w11.toFixed(1);
-        document.getElementById('w12_disp').innerText = w12.toFixed(1);
-        document.getElementById('w21_disp').innerText = w21.toFixed(1);
-        document.getElementById('w22_disp').innerText = w22.toFixed(1);
+        xCtx.strokeStyle = '#94a3b8';
+        xCtx.lineWidth = 1.5;
+        xCtx.beginPath();
+        xCtx.moveTo(originX, originY); xCtx.lineTo(originX + 360, originY);
+        xCtx.moveTo(originX, originY); xCtx.lineTo(originX, 30);
+        xCtx.stroke();
 
-        mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+        xCtx.font = 'bold 12px Consolas';
+        xCtx.fillStyle = '#64748b';
 
-        // 绘制原始网格 (浅灰)
-        mCtx.strokeStyle = '#e2e8f0';
-        mCtx.lineWidth = 1;
-        for (let i = -5; i <= 5; i++) {
-          mCtx.beginPath(); mCtx.moveTo(midX + i * scale, 0); mCtx.lineTo(midX + i * scale, mCanvas.height); mCtx.stroke();
-          mCtx.beginPath(); mCtx.moveTo(0, midY + i * scale); mCtx.lineTo(mCanvas.width, midY + i * scale); mCtx.stroke();
+        if (stage === 1 || stage === 2) {
+          xCtx.fillText('x1', originX + 350, originY + 18);
+          xCtx.fillText('x2', originX - 25, 40);
+
+          const pA = {x: originX, y: originY, label: 0, name: '(0,0)'};
+          const pB = {x: originX + unit, y: originY - unit, label: 0, name: '(1,1)'};
+          const pC = {x: originX + unit, y: originY, label: 1, name: '(1,0)'};
+          const pD = {x: originX, y: originY - unit, label: 1, name: '(0,1)'};
+
+          if (stage === 2) {
+            xCtx.strokeStyle = '#2563eb';
+            xCtx.lineWidth = 2;
+            xCtx.beginPath();
+            xCtx.moveTo(originX, originY - unit * 0.5); xCtx.lineTo(originX + unit * 0.5, originY);
+            xCtx.stroke();
+            xCtx.fillStyle = '#2563eb';
+            xCtx.fillText('h1 阈值线 (x1+x2=0.5)', originX + 20, originY - unit * 0.5 - 6);
+
+            xCtx.strokeStyle = '#9333ea';
+            xCtx.beginPath();
+            xCtx.moveTo(originX, originY - unit * 1.5); xCtx.lineTo(originX + unit * 1.5, originY);
+            xCtx.stroke();
+            xCtx.fillStyle = '#9333ea';
+            xCtx.fillText('h2 阈值线 (x1+x2=1.5)', originX + 80, originY - unit * 1.1);
+          }
+
+          [pA, pB, pC, pD].forEach(p => {
+            xCtx.beginPath();
+            if (p.label === 0) {
+              xCtx.fillStyle = '#16a34a';
+              xCtx.fillRect(p.x - 7, p.y - 7, 14, 14);
+            } else {
+              xCtx.fillStyle = '#dc2626';
+              xCtx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+              xCtx.fill();
+            }
+            xCtx.strokeStyle = '#0f172a';
+            xCtx.lineWidth = 1.5;
+            xCtx.stroke();
+            xCtx.fillStyle = '#0f172a';
+            xCtx.fillText(p.name, p.x + 10, p.y + 4);
+          });
+        } else if (stage === 3) {
+          xCtx.fillText('h1', originX + 350, originY + 18);
+          xCtx.fillText('h2', originX - 25, 40);
+
+          const pA_new = {x: originX, y: originY, label: 0, name: '(0,0) → (0, 0)'};
+          const pCD_new = {x: originX + unit * 0.5, y: originY, label: 1, name: '(1,0)&(0,1) 重合在 (0.5, 0)'};
+          const pB_new = {x: originX + unit * 1.5, y: originY - unit * 0.5, label: 0, name: '(1,1) → (1.5, 0.5)'};
+
+          xCtx.strokeStyle = '#16a34a';
+          xCtx.lineWidth = 3;
+          xCtx.beginPath();
+          xCtx.moveTo(originX + unit * 0.25, originY);
+          xCtx.lineTo(originX + unit * 2.2, originY - unit * 0.975);
+          xCtx.stroke();
+          xCtx.fillStyle = '#16a34a';
+          xCtx.fillText('输出层一刀完美切开！(h1 - 2*h2 - 0.25 = 0)', originX + unit * 0.5, originY - unit * 0.8);
+
+          [pA_new, pB_new].forEach(p => {
+            xCtx.fillStyle = '#16a34a';
+            xCtx.fillRect(p.x - 7, p.y - 7, 14, 14);
+            xCtx.strokeStyle = '#0f172a';
+            xCtx.strokeRect(p.x - 7, p.y - 7, 14, 14);
+            xCtx.fillStyle = '#0f172a';
+            xCtx.fillText(p.name, p.x + 10, p.y - 8);
+          });
+
+          xCtx.beginPath();
+          xCtx.fillStyle = '#dc2626';
+          xCtx.arc(pCD_new.x, pCD_new.y, 8, 0, Math.PI * 2);
+          xCtx.fill();
+          xCtx.strokeStyle = '#0f172a';
+          xCtx.stroke();
+          xCtx.fillStyle = '#dc2626';
+          xCtx.fillText(pCD_new.name, pCD_new.x - 40, pCD_new.y + 24);
         }
-
-        // 绘制变换后的网格 (蓝色)
-        mCtx.strokeStyle = '#93c5fd';
-        mCtx.lineWidth = 1.5;
-        for (let i = -5; i <= 5; i++) {
-          // 垂直线 (x = i)
-          const p1x = i * w11 + (-5) * w21;
-          const p1y = i * w12 + (-5) * w22;
-          const p2x = i * w11 + (5) * w21;
-          const p2y = i * w12 + (5) * w22;
-          mCtx.beginPath();
-          mCtx.moveTo(midX + p1x * scale, midY - p1y * scale);
-          mCtx.lineTo(midX + p2x * scale, midY - p2y * scale);
-          mCtx.stroke();
-
-          // 水平线 (y = i)
-          const h1x = (-5) * w11 + i * w21;
-          const h1y = (-5) * w12 + i * w22;
-          const h2x = (5) * w11 + i * w21;
-          const h2y = (5) * w12 + i * w22;
-          mCtx.beginPath();
-          mCtx.moveTo(midX + h1x * scale, midY - h1y * scale);
-          mCtx.lineTo(midX + h2x * scale, midY - h2y * scale);
-          mCtx.stroke();
-        }
-
-        // 绘制基向量 i_hat (红) 与 j_hat (绿)
-        mCtx.lineWidth = 3;
-        // i_hat
-        mCtx.strokeStyle = '#ef4444';
-        mCtx.beginPath(); mCtx.moveTo(midX, midY); mCtx.lineTo(midX + w11 * scale, midY - w12 * scale); mCtx.stroke();
-        // j_hat
-        mCtx.strokeStyle = '#10b981';
-        mCtx.beginPath(); mCtx.moveTo(midX, midY); mCtx.lineTo(midX + w21 * scale, midY - w22 * scale); mCtx.stroke();
       }
 
-      document.getElementById('w11').addEventListener('input', drawMatrixGrid);
-      document.getElementById('w12').addEventListener('input', drawMatrixGrid);
-      document.getElementById('w21').addEventListener('input', drawMatrixGrid);
-      document.getElementById('w22').addEventListener('input', drawMatrixGrid);
-      drawMatrixGrid();
+      function setXORStage(st) {
+        [1, 2, 3].forEach(i => {
+          document.getElementById(`btn_st${i}`).style.background = (i === st) ? '#2563eb' : '#64748b';
+        });
+
+        if (st === 1) {
+          document.getElementById('xor_stage_title').innerText = "阶段 1：原始输入空间 (x1, x2)";
+          document.getElementById('xor_stage_desc').innerText = "(0,0) 与 (1,1) 为绿，(1,0) 与 (0,1) 为红。两条对角线交叉，任何单一笔直超平面均无法分类。";
+        } else if (st === 2) {
+          document.getElementById('xor_stage_title').innerText = "阶段 2：隐藏层 2 个神经元联合切分";
+          document.getElementById('xor_stage_desc').innerText = "神经元 1 激活 x1+x2>0.5 区域；神经元 2 激活 x1+x2>1.5 区域。通过两道阈值与 ReLU 准备折叠空间！";
+        } else if (st === 3) {
+          document.getElementById('xor_stage_title').innerText = "阶段 3：隐层空间 (h1, h2) 线性可分";
+          document.getElementById('xor_stage_desc').innerText = "经过 ReLU 截断，原本对角线的两个红点被折叠重合在 (0.5, 0)，绿点分布在两端，输出层只需画一条直线即可 100% 切开！";
+        }
+        drawXORStage(st);
+      }
+
+      setXORStage(1);
     </script>
 
-    <h2>5. 极小规模人工计算 (2×2 矩阵手算走查)</h2>
+    <h2>4. 输入与输出 Tensor Shape 变换追踪</h2>
     <div class="logic-box">
-      <strong>已知条件：</strong><br/>
-      输入矩阵 $X = \begin{bmatrix} 1.0 & 2.0 \end{bmatrix}$ (1 个样本，2 维输入)<br/>
-      隐藏权重 $W_1 = \begin{bmatrix} 0.5 & -0.5 \\ 1.0 & 0.0 \end{bmatrix}$，偏置 $B_1 = \begin{bmatrix} 0.1 & -0.2 \end{bmatrix}$<br/><br/>
-      <strong>计算过程：</strong><br/>
-      $$Z = X \cdot W_1 + B_1 = \begin{bmatrix} 1.0\times 0.5 + 2.0\times 1.0 + 0.1 & 1.0\times (-0.5) + 2.0\times 0.0 - 0.2 \end{bmatrix}$$
-      $$Z = \begin{bmatrix} 0.5 + 2.0 + 0.1 & -0.5 + 0.0 - 0.2 \end{bmatrix} = \begin{bmatrix} 2.6 & -0.7 \end{bmatrix}$$
-      经过 ReLU 激活函数截断：
-      $$H = \text{ReLU}(Z) = \begin{bmatrix} \max(0, 2.6) & \max(0, -0.7) \end{bmatrix} = \begin{bmatrix} 2.6 & 0.0 \end{bmatrix}$$
+      <strong>全链路矩阵形状轨迹 (以 Batch Size $B=4$, 输入维度 2, 隐藏维度 2, 输出维度 1 为例)：</strong><br/>
+      1. 输入张量 $X$：<span class="shape-badge">Shape: [4, 2]</span> (4 个 XOR 样本点)<br/>
+      2. 隐藏权重 $W_1$：<span class="shape-badge">Shape: [2, 2]</span>，偏置 $B_1$：<span class="shape-badge">Shape: [2]</span><br/>
+      3. 隐藏层计算：$H = \text{ReLU}(X \cdot W_1 + B_1) \implies$ <span class="shape-badge">Shape: [4, 2]</span> (投影到折叠后的 $(h_1, h_2)$ 空间)<br/>
+      4. 输出权重 $W_2$：<span class="shape-badge">Shape: [2, 1]</span>，偏置 $B_2$：<span class="shape-badge">Shape: [1]</span><br/>
+      5. 最终输出：$Y = H \cdot W_2 + B_2 \implies$ <span class="shape-badge">Shape: [4, 1]</span>
     </div>
 
-    <h2>6. Python / NumPy 极简代码实现</h2>
+    <h2>5. Python / NumPy 极简 XOR 网络验证代码</h2>
     <pre><code class="language-python">import numpy as np
 
-class MiniMLP:
+class XORNet:
     def __init__(self):
-        # 隐藏层: 2 维 -> 2 维
-        self.W1 = np.array([[0.5, -0.5],
-                            [1.0,  0.0]])
-        self.B1 = np.array([0.1, -0.2])
-        # 输出层: 2 维 -> 1 维
-        self.W2 = np.array([[1.5],
-                            [0.5]])
+        self.W1 = np.array([[1.0, 1.0],
+                            [1.0, 1.0]])
+        self.B1 = np.array([-0.5, -1.5])
+        
+        self.W2 = np.array([[1.0],
+                            [-2.0]])
         self.B2 = np.array([0.0])
 
     def forward(self, X):
-        # 1. 隐藏层仿射变换与 ReLU 激活
-        Z1 = np.dot(X, self.W1) + self.B1
-        H = np.maximum(0, Z1)
-        # 2. 输出层仿射变换
+        # 1. 空间折叠 (隐藏层)
+        H = np.maximum(0, np.dot(X, self.W1) + self.B1)
+        # 2. 线性分类 (输出层)
         Y = np.dot(H, self.W2) + self.B2
-        return Y
+        return Y, H
 
-mlp = MiniMLP()
-X_sample = np.array([[1.0, 2.0]])
-out = mlp.forward(X_sample)
-print("MLP 前向输出:", out) # 输出: [[3.9]]
+xor_net = XORNet()
+X = np.array([[0.0, 0.0],
+              [1.0, 0.0],
+              [0.0, 1.0],
+              [1.0, 1.0]])
+
+Y_pred, H_space = xor_net.forward(X)
+
+print("原始输入 X:\n", X)
+print("\n隐藏层折叠后的新坐标 H (h1, h2):\n", H_space)
+print("\n输出层判决 Y_pred (>=0.5 为 1, <0.5 为 0):\n", Y_pred)
 </code></pre>
 
-    <h2>7. 打开黑盒：真实工程细节 (GEMM 与 Tensor Core)</h2>
+    <h2>6. 打开黑盒：真实工程细节 (GEMM 与 Tensor Core)</h2>
     <div class="card">
       <strong>为什么整个 AI 工业界都为 GEMM 痴狂？</strong><br/>
       现代 NVIDIA GPU（如 H100/A100）的 <strong>Tensor Core</strong> 硬件加速单元，其本质就是一条超高吞吐的专用矩阵乘流水线！<br/>
       它通过硬件脉动阵列（Systolic Array），在一个时钟周期内就能同时完成 $16 \times 16$ 矩阵的高精度乘累加，计算密度比传统标量 CPU 提升了整整上千倍！
     </div>
 
-    <h2>8. 动手实验与思考题</h2>
+    <h2>7. 动手实验与思考题</h2>
     <div class="warning-box">
       <strong>思考题：如果去除非线性激活函数，堆叠 100 层 MLP 会怎样？</strong><br/>
       如果 $H_1 = X W_1, H_2 = H_1 W_2, \dots, Y = H_{99} W_{100}$。<br/>
