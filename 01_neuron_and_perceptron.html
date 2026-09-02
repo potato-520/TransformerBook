@@ -416,13 +416,73 @@
       </ul>
     </p>
 
-    <h2>4. 输入与输出 Tensor Shape</h2>
-    <ul>
-      <li><strong>输入特征向量 $X$</strong>：<span class="shape-badge">Shape: [B, 2]</span>。</li>
-      <li><strong>权重向量 $W$</strong>：<span class="shape-badge">Shape: [2]</span>。</li>
-      <li><strong>偏置标量 $b$</strong>：<span class="shape-badge">Shape: [1]</span>。</li>
-      <li><strong>输出判决 $\hat{y}$</strong>：<span class="shape-badge">Shape: [B, 1]</span>。</li>
-    </ul>
+    <h2>4. 输入与输出 Tensor Shape (C 语言数组 vs PyTorch/NumPy 张量对照)</h2>
+    <p>
+      在深度学习与张量代数中，张量的形状（Shape）可以用我们最熟悉的 <strong>C/C++ 多维数组</strong> 来完美对照理解：
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>张量名称</th>
+          <th>Tensor Shape 标记</th>
+          <th>对应 C/C++ 数组定义</th>
+          <th>几何维度 (Rank)</th>
+          <th>具体物理含义</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>输入张量 $X$</strong></td>
+          <td><span class="shape-badge">Shape: [B, 2]</span></td>
+          <td><code>float X[B][2];</code></td>
+          <td><strong>2 维矩阵</strong> ($B$ 行 2 列)</td>
+          <td>
+            <strong>$B$ 行</strong>代表批大小（Batch Size，一次送入 $B$ 个采样样本）；<br/>
+            <strong>2 列</strong>代表每个样本的 2 个传感器特征（第 0 列是温度 $x_1$，第 1 列是电流 $x_2$）。<br/>
+            <em>若单次只测 1 个样本 ($B=1$)，则是 1 行 2 列的矩阵 <code>[[x1, x2]]</code>。</em>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>权重向量 $W$</strong></td>
+          <td><span class="shape-badge">Shape: [2]</span></td>
+          <td><code>float W[2];</code></td>
+          <td><strong>1 维向量</strong> (长度为 2 的一维数组)</td>
+          <td>
+            纯粹的一维数组 <code>[w1, w2]</code>，不分行列。<br/>
+            分别存放对“温度”和“电流”的敏感度系数。
+          </td>
+        </tr>
+        <tr>
+          <td><strong>偏置标量 $b$</strong></td>
+          <td><span class="shape-badge">Shape: [1]</span> 或标量</td>
+          <td><code>float b;</code></td>
+          <td><strong>0 维标量</strong> / 长度为 1 的数组</td>
+          <td>系统的基础安全保护阈值（基准偏置）。</td>
+        </tr>
+        <tr>
+          <td><strong>前向得分 $z$</strong></td>
+          <td><span class="shape-badge">Shape: [B, 1]</span></td>
+          <td><code>float z[B][1];</code></td>
+          <td><strong>2 维矩阵</strong> ($B$ 行 1 列)</td>
+          <td>经过 $X \cdot W + b$ 矩阵乘累加后，$B$ 个样本各自算出的加权总分。</td>
+        </tr>
+        <tr>
+          <td><strong>最终输出 $\hat{y}$</strong></td>
+          <td><span class="shape-badge">Shape: [B, 1]</span></td>
+          <td><code>int y_hat[B][1];</code></td>
+          <td><strong>2 维矩阵</strong> ($B$ 行 1 列)</td>
+          <td>经过比较器阈值判决后，$B$ 个样本各自输出的 $0$ 或 $1$ 报警电平。</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="logic-box">
+      <strong>💡 极简速记口诀：</strong><br/>
+      - <code>Shape: [2]</code>：只有 1 个中括号数字 $\implies$ <strong>1 维数组（一维向量）</strong>，里面装了 2 个浮点数。<br/>
+      - <code>Shape: [B, 2]</code>：有 2 个中括号数字 $\implies$ <strong>2 维数组（二维矩阵）</strong>，代表 <strong>$B$ 行、2 列</strong>！<br/>
+      - <code>Shape: [B, L, D]</code>（后续 Transformer 中）：有 3 个数字 $\implies$ <strong>3 维立方体数组 <code>float X[B][L][D]</code></strong>！
+    </div>
 
     <h2>5. 黑盒 JS 可交互动画体验</h2>
     <p>
